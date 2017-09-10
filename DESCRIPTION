@@ -1,0 +1,11 @@
+Package: toal
+Type: Package
+Title: Time-Of-Arrival Localization
+Version: 0.1.0
+Author: James Campbell
+Maintainer: jamesadamcampbell@gmail.com
+Description: A set of tools for loading, cleaning, and localizing points from acoustic tag detections from hydrophone arrays with at least 4 hydrophones.
+License: GPL-3
+Encoding: UTF-8
+Suggests:  ggplot2, Matrix
+LazyData: true
