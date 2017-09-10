@@ -10,7 +10,8 @@ Encoding: UTF-8
 Suggests: ggplot2,
     Matrix,
     knitr,
-    rmarkdown
+    rmarkdown,
+    R.utils
 LazyData: true
 VignetteBuilder: knitr
 RoxygenNote: 6.0.1
