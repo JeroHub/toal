@@ -1,6 +1,6 @@
 ---
-title: "Vignette Title"
-author: "Vignette Author"
+title: "Localization_example"
+author: "James Campbell"
 date: "`r Sys.Date()`"
 output: rmarkdown::html_vignette
 vignette: >
@@ -17,8 +17,9 @@ Here, we'll create a simulated hydrophone array and acoustic tag then use the fu
 
 The code below will create a simulated array of 5 hydrophones and randomly place multiple sound sources within this array.
 
-```{r}
+```{r, fig.width=6,fig.height=5}
 require(ggplot2)
+require(toal)
 ## Define a simulated sensor array.
 sensorLocations <- data.frame(x = c(0, 0, 10, 10, 5),
                               y = c(0, 9, 0, 10, 0),
@@ -63,7 +64,7 @@ ggplot(sensorLocations) +
   geom_point(aes(x = x, y = y, size = z)) +
   geom_point(data = sourceLocation,
              aes(x = x, y = y, size = z),
-             color = 'red', alpha = 0.5) +
+             color = 'red', pch = 4) +
   geom_text(aes(x = x, y = y, label = rownames(sensorLocations)),
             nudge_x = nudge, nudge_y = nudge) +
   theme_bw() + coord_equal() +
@@ -80,22 +81,109 @@ sensorLatency
 
 The function `TOA.localization` will calculate the source locations estimates for us, along with an error parameter for each estimate.
 
-```{r}
-
-TOA.localization()
-
+```{r, fig.width=6,fig.height=5}
+sourceEstimates <- TOA.localization(toa = sensorLatency,
+                                    hydrohpone.positions = sensorLocations,
+                                    c = 1500)
 
 ## Plot resulting source locations and location estimates
 ggplot(sensorLocations) + 
   geom_point(aes(x = x, y = y, size = z)) +
-  geom_text(aes(x = x, y = y, label = as.character(ID)),
+  geom_text(aes(x = x, y = y, label = rownames(sensorLocations)),
             nudge_x = nudge, nudge_y = nudge) +
   geom_point(data = sourceLocation,
              aes(x = x, y = y, size = z),
-             color = 'red') +
-  geom_point(aes(x = x_source[1], y = x_source[2],size = x_source[3]),
-             pch = 10, color = 'blue') +
+             color = 'red', pch = 4) +
+  geom_point(data = sourceEstimates,
+             aes(x = x, y = y,
+                 size = z),
+             pch = 3, color = 'blue') +
   theme_bw() + coord_equal() +
   scale_size_continuous(name = 'Depth',trans = 'reverse') + 
   ggtitle('Simulated Sensor array')
+```
+
+In the image above, blue crosshairs represent the location estimates.
+As seen, in a ideal situaiton with no error on the time-of-arrival measurements the estimates perfetly match the real source locations.
+
+
+The spherical interpolation method is essentially a least squares problem for minimizing error from differences of arrival times.
+Thus, for each estimate, an error parameter is calculated which can be kept in our dataset (`error` column in `sourceEstimates`).
+To convert time of arrival differences to distance from source distances for each hydrophone, the spherical interpolation method requires a prior definition of the speed of sound.
+Incorrectly defining this can cause large errors in your estimates.
+However, with some trial and error, you can minimize the mean error to find the true speed of sound in your experimental area (or at least very close to it).
+The plot below shows the error terms resulting from using incorrect sound speeds, along with a plot to visualize the result.
+
+```{r, fig.width=6,fig.height=5}
+sourceEstimates.error <- rbind(cbind(delta_c = 0,TOA.localization(toa = sensorLatency,
+                                    hydrohpone.positions = sensorLocations,
+                                    c = 1500)),
+                               cbind(delta_c = 050,TOA.localization(toa = sensorLatency,
+                                    hydrohpone.positions = sensorLocations,
+                                    c = 1450)),
+                               cbind(delta_c = 0100,TOA.localization(toa = sensorLatency,
+                                    hydrohpone.positions = sensorLocations,
+                                    c = 1400)))
+
+## Plot resulting source locations and location estimates
+ggplot(sensorLocations) + 
+  geom_point(aes(x = x, y = y, size = z)) +
+  geom_text(aes(x = x, y = y, label = rownames(sensorLocations)),
+            nudge_x = nudge, nudge_y = nudge) +
+  geom_point(data = sourceLocation,
+             aes(x = x, y = y, size = z),
+             color = 'red',  pch = 4) +
+  geom_point(data = sourceEstimates.error,
+             aes(x = x, y = y,
+                 size = z, color = factor(delta_c)),
+             pch = 3, stroke = 1) +
+  theme_bw() + coord_equal() +
+  scale_size_continuous(name = 'Depth',trans = 'reverse') + 
+  ggtitle('Simulated Sensor array') +
+  scale_color_discrete(name = 'c error')
+```
+
+
+Finally, we can test a scenrario with 4 hydrophones in the array.
+This setup will cause the function `TOA.localization` to use a different formulation of the spherical interpolation method which specifically deals with 4 sensors and provides two estimates for each source location.
+For this, we'll use the same simulated setup as before, but we'll remove the 5th hydrophone from the array.
+
+```{r, fig.width=6,fig.height=5}
+sensorLocations.2 <- sensorLocations[1:4,]
+sensorLatency.2 <- sensorLatency[,1:4]
+
+ggplot(sensorLocations.2) + 
+  geom_point(aes(x = x, y = y, size = z)) +
+  geom_point(data = sourceLocation,
+             aes(x = x, y = y, size = z),
+             color = 'red', pch = 4) +
+  geom_text(aes(x = x, y = y, label = rownames(sensorLocations.2)),
+            nudge_x = nudge, nudge_y = nudge) +
+  theme_bw() + coord_equal() +
+  scale_size_continuous(name = 'Depth',trans = 'reverse') + 
+  ggtitle('Simulated Sensor array and sound sources')
+```
+
+
+
+```{r, fig.width=6,fig.height=5}
+sensorLocations.2
+sensorLatency.2
+
+sourceEstimates.2 <- TOA.localization(toa = sensorLatency.2,
+                                    hydrohpone.positions = sensorLocations.2)
+ggplot(sensorLocations.2) + 
+  geom_point(aes(x = x, y = y, size = z)) +
+  geom_point(data = sourceLocation,
+             aes(x = x, y = y, size = z),
+             color = 'red', pch = 4) +
+  geom_text(aes(x = x, y = y, label = rownames(sensorLocations.2)),
+            nudge_x = nudge, nudge_y = nudge) +
+  theme_bw() + coord_equal() +
+  scale_size_continuous(name = 'Depth',trans = 'reverse') + 
+  ggtitle('Simulated Sensor array and sound sources') + 
+  geom_point(data = sourceEstimates.2,
+             aes(x = x, y = y, size = z, color = factor(id)),
+             pch = 3, stroke = 1) + 
+  scale_color_discrete(name = 'id')
 ```

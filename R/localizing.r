@@ -22,6 +22,14 @@
 #' Schau, H. C., Robinson, A. Z. 1987. Passive Source Localization Employing Intersecting Spherical Surfaces from Time-of-Arrival Differences.  IEEE TRANSACTIONS ON ACOUSTICS, SPEECH, AND SIGNAL PROCESSING. 35(8):1223-1225
 TOA.localization <- function(toa, hydrohpone.positions, c = 1500){
 
+  N <- nrow(hydrohpone.positions)
+  if(N<4){
+    stop('Less than 4 rows (hydrophone positions) detected')
+  }
+  if(ncol(toa) != N){
+    stop('Number of columns in toa match number of rows in hydrophone.positions')
+  }
+
   ## Nested function for calculating distance between points in 3d space
   dist <- function(a,b){
     ## Calc distance between two locations
@@ -31,42 +39,84 @@ TOA.localization <- function(toa, hydrohpone.positions, c = 1500){
 
   ## Define S: sensor locations, use first hydrophone (row 1) as origin
   # Normalize locations so H1 is at 0,0,0
-  hydrohpone.positions <- hydrohpone.positions - hydrohpone.positions[1,]
+  hydrohpone.positions.norm <- apply(hydrohpone.positions,MARGIN = 1,FUN = function(x){
+    x - hydrohpone.positions[1,]
+  })
+  hydrohpone.positions.norm <- do.call(what = 'rbind',args = hydrohpone.positions.norm)
+
   # x,y,z position of sensors 2-4 (sensor = receivers)
-  S  = as.matrix(hydrohpone.positions[2:N,])
+  S  = as.matrix(hydrohpone.positions.norm[2:N,])
 
-  ## Define d: Range distance differences between all sensors
-  # TOA differences are proportional to range differences, convert TOA diffs (s) to range diffs (m)
-  # Create matrix of distances between sensors i,j
-  d <- matrix(nrow = N-1,ncol = 1)
-  for(i in 1:(N-1)){
-    TOA.diff <- sensorLatency[i+1] - sensorLatency[1]
-    range.diff <- TOA.diff*c # distance differences
-    d[i,1] <- range.diff
+  ## Loop through each TOA and estimate a source position
+  if(N==4){
+    len <- nrow(toa)*2
+  }else{
+    len <- nrow(toa)
   }
+  estimates <- data.frame(id = vector(mode = 'numeric',length = len),
+                          x = vector(mode = 'numeric',length = len),
+                          y = vector(mode = 'numeric',length = len),
+                          z = vector(mode = 'numeric',length = len),
+                          error = vector(mode = 'numeric',length = len))
+  for(i in 1:nrow(toa)){
+    ## Define d: Range distance differences between all sensors
+    # TOA differences are proportional to range differences, convert TOA diffs (s) to range diffs (m)
+    # Create matrix of distances between sensors i,j
+    d <- matrix(nrow = N-1,ncol = 1)
+    for(j in 1:(N-1)){
+      TOA.diff <- toa[i,j+1] - toa[i,1]
+      range.diff <- TOA.diff*c # distance differences
+      d[j,1] <- range.diff
+    }
 
-  ## Define R: Distances between Reference sensor (id: 1) and other sensors
-  R <- matrix(nrow = N-1,ncol = 1)
-  for(i in 1:(N-1)){
-    R[i,1] <- sqrt(sum(S[i,]^2))
+    ## Define R: Distances between Reference sensor (id: 1) and other sensors
+    R <- matrix(nrow = N-1,ncol = 1)
+    for(j in 1:(N-1)){
+      R[j,1] <- sqrt(sum(S[j,]^2))
+    }
+
+    ## delta: R - d
+    delta <- R^2 - d^2
+
+    if(N > 4){
+      #### Use generalized form of localization
+      ## 'Weighting matrix.
+      # Set all values to 1 and assume all sesnors are equally reliable
+      W = diag(x = rep.int(1,times = N-1))
+
+      ## Identity matrix
+      I = diag(x = rep.int(1,times = N-1))
+
+      ## Orthogonal compliment of P, with respect to d
+      P.orth_d <- I - ((d %*% t(d)) / as.vector(t(d) %*% d))
+
+      # Equation no. 14 from Smith & Abel, 1987.
+      temp <- (1/2) *
+        solve((((t(S) %*% P.orth_d) %*% W) %*% P.orth_d) %*% S) %*%
+        ((((t(S) %*% P.orth_d) %*% W) %*% P.orth_d) %*% delta)
+
+      R_s <- sqrt(sum(temp^2)) # Distance of origin from source
+      error.temp <- delta - 2*(R_s*d) - 2*(S %*% temp)
+      error <- sqrt(sum(error.temp^2)) # sum of squared error
+      estimates[i,] <- c(id = 1, temp, error = error)
+    }else{
+      #### Use normal form of localization (only works for 4 sensors)
+      a <- 4 - 4*(t(d) %*% t(solve(S)) %*% solve(S) %*% d)
+      b <- 2 * (t(d) %*% t(solve(S)) %*% solve(S) %*% delta) +
+        2*(t(delta) %*% t(solve(S)) %*% solve(S) %*% d)
+      C <- -(t(delta) %*% t(solve(S)) %*% solve(S) %*% delta)
+
+      R_s.1 <- as.vector((-b + sqrt(b^2 - 4*a*C))/ (2*a))
+      R_s.2 <- as.vector((-b - sqrt(b^2 - 4*a*C))/ (2*a))
+
+      temp.1 <- 0.5 * solve(S) %*% (delta - (2*(R_s.1 * d)))
+      temp.2 <- 0.5 * solve(S) %*% (delta - (2*(R_s.2 * d)))
+
+      error.temp <- delta - 2*(R_s.1*d) - 2*(S %*% temp.1)
+      error <- sqrt(sum(error.temp^2)) # alc sum of squared error
+
+      estimates[((i-1)*2) + 1:2,] <- cbind(id = i, rbind(t(temp.1), t(temp.2)), error = error)
+    }
   }
-
-  ## delta: R - d
-  delta <- R^2 - d^2
-  ## 'Weighting matrix.
-  # Set all values to 1 and assume all sesnors are equally reliable
-  W = diag(x = rep.int(1,times = N-1))
-
-  ## Identity matrix
-  I = diag(x = rep.int(1,times = N-1))
-
-  ## Orthogonal compliment of P, with respect to d
-  P.orth_d <- I - ((d %*% t(d)) / as.vector(t(d) %*% d))
-
-  # Equation no. 14 from Smith & Abel, 1987.
-  x_source = (1/2) *
-    ginv((((t(S) %*% P.orth_d) %*% W) %*% P.orth_d) %*% S) %*%
-    ((((t(S) %*% P.orth_d) %*% W) %*% P.orth_d) %*% delta)
-
-  return(x_source)
+  return(estimates)
 }
