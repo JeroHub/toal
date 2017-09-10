@@ -4,7 +4,7 @@
 Using time-of-arrival differences, `toal` implements the spherical interpolation method of localizing sound sources.
 This method is closed form, and is thus quite quick to process.
 
-Additionally, this package provides functions geard towards marine biologisits which implement methods for:
+Additionally, this package provides functions geared towards marine biologisits which implement methods for:
 - identifying acoustic tags based on the pulse period
 - Automatically removing surface reflections
 - Reading raw data from HTI acoustic tag monitoring systems
