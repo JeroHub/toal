@@ -15,7 +15,7 @@ To get a quick look at what this package does, you can install it and load the e
 ```r
 # Install from github
 require(devtools)
-install_github('RTbecard/toal')
+install_github('RTbecard/toal', build_vignettes = T, force = T)
 
 # Open vignette for sound source localization
 vignette(package = 'toal', topic = 'Localization')
