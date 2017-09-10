@@ -7,5 +7,9 @@ Maintainer: jamesadamcampbell@gmail.com
 Description: A set of tools for loading, cleaning, and localizing points from acoustic tag detections from hydrophone arrays with at least 4 hydrophones.
 License: GPL-3
 Encoding: UTF-8
-Suggests:  ggplot2, Matrix
+Suggests: ggplot2, Matrix,
+    knitr,
+    rmarkdown
 LazyData: true
+VignetteBuilder: knitr
+RoxygenNote: 6.0.1

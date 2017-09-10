@@ -4,7 +4,7 @@
 #' Four hydrophones will result in 1 degree of ambiguity and two position estimates, while more hydrophones will result in a single estimate.
 #' This is an implementation by the spherical interpolation methods described by Schau & Robinson (1987) and Smith & Abel (1987) which provides a closed form solution for estimating source locations from the relative differences between time-of-arrival at each hydrophone.
 #'
-#' The parameter \code{toa} must be a 4 column matrix or data.frame where each column represents a unique hydrophone in the array and each row represents a detection.
+#' The parameter \code{toa} must be a N column matrix or data.frame where each column represents a unique hydrophone in the array and each row represents a detection.
 #' The values in this parameter represent the time of arrival in seconds at each hydrophone.
 #' The parameter \code{hydrophone.positions} should be a N by 3 matrix or data.frame, where each row represents a hydrophone (in the same order as appearing in the columns of \code{toa}) and the three columns are the x, y, and z positions in meters.
 #'
@@ -20,7 +20,7 @@
 #' @references Smith, J. O., Abel, J. S. 1987. Closed-Form Least-Squares Source Location Estimation from Range-Difference Measurements.  IEEE TRANSACTIONS ON ACOUSTICS, SPEECH, AND SIGNAL PROCESSING. 35(12):1661-1669.
 #'
 #' Schau, H. C., Robinson, A. Z. 1987. Passive Source Localization Employing Intersecting Spherical Surfaces from Time-of-Arrival Differences.  IEEE TRANSACTIONS ON ACOUSTICS, SPEECH, AND SIGNAL PROCESSING. 35(8):1223-1225
-TOA_localization <- function(toa, hydrohpone.positions, c = 1500){
+TOA.localization <- function(toa, hydrohpone.positions, c = 1500){
 
   ## Nested function for calculating distance between points in 3d space
   dist <- function(a,b){
@@ -29,32 +29,27 @@ TOA_localization <- function(toa, hydrohpone.positions, c = 1500){
     return(sqrt(sum(dif^2)))
   }
 
-  ## Define S: sensor locations, use first sensor as origin
+  ## Define S: sensor locations, use first hydrophone (row 1) as origin
+  # Normalize locations so H1 is at 0,0,0
+  hydrohpone.positions <- hydrohpone.positions - hydrohpone.positions[1,]
   # x,y,z position of sensors 2-4 (sensor = receivers)
-  S  = as.matrix(sensor.positions[2:N,c('x','y','z')])
+  S  = as.matrix(hydrohpone.positions[2:N,])
 
-  ## Define d: Range distance differences distances between sensors and reference sensor
-  ## Crete matrix of distances between sensors i,j
+  ## Define d: Range distance differences between all sensors
+  # TOA differences are proportional to range differences, convert TOA diffs (s) to range diffs (m)
+  # Create matrix of distances between sensors i,j
   d <- matrix(nrow = N-1,ncol = 1)
   for(i in 1:(N-1)){
     TOA.diff <- sensorLatency[i+1] - sensorLatency[1]
     range.diff <- TOA.diff*c # distance differences
     d[i,1] <- range.diff
   }
-  ## Add row names to matrix, defining sensors i and j
-  row.names(d) <- paste0(as.character(2:N),
-                         ',',
-                         as.character(rep.int(1,times = N-1)))
-  colnames(d) <- 'RD between i,j'
 
   ## Define R: Distances between Reference sensor (id: 1) and other sensors
   R <- matrix(nrow = N-1,ncol = 1)
   for(i in 1:(N-1)){
     R[i,1] <- sqrt(sum(S[i,]^2))
   }
-  ## Add row names to matrix, defining sensors i and j
-  row.names(R) <- as.character(2:N)
-  colnames(R) <- 'Distance from sensor i to reference sensor (id: 1)'
 
   ## delta: R - d
   delta <- R^2 - d^2

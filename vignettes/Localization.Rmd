@@ -1,0 +1,101 @@
+---
+title: "Vignette Title"
+author: "Vignette Author"
+date: "`r Sys.Date()`"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{Vignette Title}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+### Overview
+
+Here, we'll create a simulated hydrophone array and acoustic tag then use the functions of this package to localize the source using time-of-arrival differences.
+
+### Create a simulated dataset
+
+The code below will create a simulated array of 5 hydrophones and randomly place multiple sound sources within this array.
+
+```{r}
+require(ggplot2)
+## Define a simulated sensor array.
+sensorLocations <- data.frame(x = c(0, 0, 10, 10, 5),
+                              y = c(0, 9, 0, 10, 0),
+                              z = c(0, 5,5, 0, 0),
+                              row.names = paste0('H',1:5))
+
+
+## Create 5 random source locations within array
+n <- 5 # point sources to simulate
+sourceLocation <- data.frame(x = runif(n = n,min = 0, max = 10), 
+                             y = runif(n = n,min = 0, max = 10), 
+                             z = runif(n = n,min = 0, max = 5))
+
+## Calculate simulated arrival delays
+N <- nrow(sensorLocations) # Number of sensors
+c <- 1500 # Speed of sound in water
+
+## Function for calculating distance between points
+dist <- function(a,b){
+  ## Calc distance between two locations
+  dif <- abs(a - b)
+  return(sqrt(sum(dif^2)))
+}
+
+# Initalize empty array of TOAs
+sensorLatency = matrix(ncol = N,nrow = nrow(sourceLocation))
+# Calculate distances from each
+for(i in 1:N){
+  for(j in 1:nrow(sourceLocation)){
+    sensorLatency[j,i] <- dist(sourceLocation[j,],sensorLocations[i,1:3])
+  }
+}
+rownames(sensorLatency) <- paste0('Source ',1:nrow(sourceLocation))
+colnames(sensorLatency) <- paste0('Hydrophone ',1:N)
+
+## Convert distances to arrival latencies (from meters to seconds)
+sensorLatency <- sensorLatency/c
+
+## Plot resulting source locations and location estimates
+nudge <- 0.5
+ggplot(sensorLocations) + 
+  geom_point(aes(x = x, y = y, size = z)) +
+  geom_point(data = sourceLocation,
+             aes(x = x, y = y, size = z),
+             color = 'red', alpha = 0.5) +
+  geom_text(aes(x = x, y = y, label = rownames(sensorLocations)),
+            nudge_x = nudge, nudge_y = nudge) +
+  theme_bw() + coord_equal() +
+  scale_size_continuous(name = 'Depth',trans = 'reverse') + 
+  ggtitle('Simulated Sensor array and sound sources')
+```
+
+To localize the sound soruces, we need the time-of-arrival and hydrophone location data, seen here in `sourceLocation` and `sensorLatency`.
+
+```{r}
+sensorLocations
+sensorLatency
+```
+
+The function `TOA.localization` will calculate the source locations estimates for us, along with an error parameter for each estimate.
+
+```{r}
+
+TOA.localization()
+
+
+## Plot resulting source locations and location estimates
+ggplot(sensorLocations) + 
+  geom_point(aes(x = x, y = y, size = z)) +
+  geom_text(aes(x = x, y = y, label = as.character(ID)),
+            nudge_x = nudge, nudge_y = nudge) +
+  geom_point(data = sourceLocation,
+             aes(x = x, y = y, size = z),
+             color = 'red') +
+  geom_point(aes(x = x_source[1], y = x_source[2],size = x_source[3]),
+             pch = 10, color = 'blue') +
+  theme_bw() + coord_equal() +
+  scale_size_continuous(name = 'Depth',trans = 'reverse') + 
+  ggtitle('Simulated Sensor array')
+```
