@@ -8,11 +8,16 @@
 #' The values in this parameter represent the time of arrival in seconds at each hydrophone.
 #' The parameter \code{hydrophone.positions} should be a N by 3 matrix or data.frame, where each row represents a hydrophone (in the same order as appearing in the columns of \code{toa}) and the three columns are the x, y, and z positions in meters.
 #'
+#' When analyzing a four hydrophone array, two results will be given by two forms of the error minimizing formula.
+#' These forms are indicaed by the column `eq` in the resulting data.frame.
+#' In some setups, one form (either `+` or `-`) will always result in the corret location.
+#' If this is the case, you can use this column to easily filter out the erronious locations.
+#'
 #' @param toa data.frame or matrix holding times of arrival for each hydrophone  See details for formatting requirements.
 #' @param hydrophone.positions data.frame or matrix holding information about hydrophone positions.  See details for formatting.
 #' @param c Speed of sound in the medium.  The default value represents a general approximation of sea water.
 #'
-#' @return
+#' @return A data.frame holding the `id` of the localization, which is the row number from the `toa` parameter highlighting the TOA differences used to make the estimate and the resulting location of the estimate.
 #' @export
 #'
 #' @examples
@@ -53,11 +58,13 @@ TOA.localization <- function(toa, hydrohpone.positions, c = 1500){
   }else{
     len <- nrow(toa)
   }
-  estimates <- data.frame(id = vector(mode = 'numeric',length = len),
-                          x = vector(mode = 'numeric',length = len),
-                          y = vector(mode = 'numeric',length = len),
-                          z = vector(mode = 'numeric',length = len),
-                          error = vector(mode = 'numeric',length = len))
+  estimates <- data.frame(id = vector(mode = 'integer',length = len),
+                          x = vector(mode = 'double',length = len),
+                          y = vector(mode = 'double',length = len),
+                          z = vector(mode = 'double',length = len),
+                          error = vector(mode = 'double',length = len),
+                          eq = vector(mode = 'character',length = len),
+                          stringsAsFactors = F)
   for(i in 1:nrow(toa)){
     ## Define d: Range distance differences between all sensors
     # TOA differences are proportional to range differences, convert TOA diffs (s) to range diffs (m)
@@ -98,7 +105,7 @@ TOA.localization <- function(toa, hydrohpone.positions, c = 1500){
       R_s <- sqrt(sum(temp^2)) # Distance of origin from source
       error.temp <- delta - 2*(R_s*d) - 2*(S %*% temp)
       error <- sqrt(sum(error.temp^2)) # sum of squared error
-      estimates[i,] <- c(id = 1, temp, error = error)
+      estimates[i,] <- data.frame(id = 1, t(temp), error = error, eq = NA, stringsAsFactors = F)
     }else{
       #### Use normal form of localization (only works for 4 sensors)
       a <- 4 - 4*(t(d) %*% t(solve(S)) %*% solve(S) %*% d)
@@ -115,8 +122,16 @@ TOA.localization <- function(toa, hydrohpone.positions, c = 1500){
       error.temp <- delta - 2*(R_s.1*d) - 2*(S %*% temp.1)
       error <- sqrt(sum(error.temp^2)) # alc sum of squared error
 
-      estimates[((i-1)*2) + 1:2,] <- cbind(id = i, rbind(t(temp.1), t(temp.2)), error = error)
+      estimates[((i-1)*2) + 1,] <- data.frame(id = i, t(temp.1), error = error, eq = '+', stringsAsFactors = F)
+      estimates[((i-1)*2) + 2,] <- data.frame(id = i, t(temp.2), error = error, eq = '-', stringsAsFactors = F)
     }
   }
+
+  ## Return hydrophones to real positions
+  positions.real <- apply(estimates[,2:4],MARGIN = 1,FUN = function(x){
+    x + hydrohpone.positions[1,]
+  })
+  positions.real <- do.call(what = 'rbind',args = positions.real)
+  estimates[,2:4] <- positions.real
   return(estimates)
 }
