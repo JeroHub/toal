@@ -13,6 +13,9 @@ TOA.localization(toa, hydrohpone.positions, c = 1500)
 
 \item{hydrophone.positions}{data.frame or matrix holding information about hydrophone positions.  See details for formatting.}
 }
+\value{
+A data.frame holding the `id` of the localization, which is the row number from the `toa` parameter highlighting the TOA differences used to make the estimate and the resulting location of the estimate.
+}
 \description{
 Localize sound sources using an array of 4 or more hydrophones.
 Four hydrophones will result in 1 degree of ambiguity and two position estimates, while more hydrophones will result in a single estimate.
@@ -22,6 +25,11 @@ This is an implementation by the spherical interpolation methods described by Sc
 The parameter \code{toa} must be a N column matrix or data.frame where each column represents a unique hydrophone in the array and each row represents a detection.
 The values in this parameter represent the time of arrival in seconds at each hydrophone.
 The parameter \code{hydrophone.positions} should be a N by 3 matrix or data.frame, where each row represents a hydrophone (in the same order as appearing in the columns of \code{toa}) and the three columns are the x, y, and z positions in meters.
+
+When analyzing a four hydrophone array, two results will be given by two forms of the error minimizing formula.
+These forms are indicaed by the column `eq` in the resulting data.frame.
+In some setups, one form (either `+` or `-`) will always result in the corret location.
+If this is the case, you can use this column to easily filter out the erronious locations.
 }
 \examples{
 
