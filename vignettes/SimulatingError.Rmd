@@ -23,11 +23,11 @@ We'll also add the error due to the hydrophone sampling rate and movement to our
 ## Define a simulated sensor array.
 # Hydrophones are arranged in a rectangle with the following lateral and depth 
 # distances along the edges of the array.
-dist.lateral <- 8.1
+dist.lateral <- 11
 dist.depth <- 1.5
 
 ## Define a rectangle where the sources will be randomly placed
-source.lateral <- 10
+source.lateral <- 8
 source.depth <- 4
 
 ## The sampling rate of the simulated hydrophone array
@@ -36,8 +36,8 @@ fs <- 12000
 
 ## Maximum error due to hydrophone movement
 # This will be used to create a random uniform distribution of hydrophopne position errors
-movement.error <- 0.3
-
+movement.error <- 0.05
+  
 ## Begin creating simulated dataset
 require(ggplot2)
 require(toal)
@@ -107,6 +107,7 @@ ggplot(sensorLocations) +
 
 As we're using an array of 4 hydrophones, we'll plot the results of both estimates (for different formulations of the spherical interpolation method) for each source.
 To illustrate the error, we'll draw lines between each true source location and the resulting estimate from the simulated detection and error.
+The interpretation is simple: long blue lines in the resulting plots indicate the magnitude and direction of estimate error.
 
 
 ```{r, fig.width=8,fig.height=8,warning=F}
@@ -151,7 +152,7 @@ plot.1 <- plot.sensors.xy +
             aes(x = x, y = y, group = factor(id)),
             color = cols[3], alpha = alpha.line) +
   scale_size_continuous(name = 'Depth',trans = 'reverse') + 
-  ggtitle('Simulated Sensor array')
+  ggtitle(paste0('Simulated Sensor array, M.Error: ', movement.error))
 
 
 plot.2 <- plot.sensors.xy +
