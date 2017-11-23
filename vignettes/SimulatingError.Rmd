@@ -24,7 +24,7 @@ We'll also add the error due to the hydrophone sampling rate and movement to our
 # Hydrophones are arranged in a rectangle with the following lateral and depth 
 # distances along the edges of the array.
 dist.lateral <- 11
-dist.depth <- 1.5
+dist.depth <- 1.4
 
 ## Define a rectangle where the sources will be randomly placed
 source.lateral <- 8
