@@ -77,3 +77,83 @@ read.HTI.RAT <- function(file,fs){
   data.raw$seconds <- data.raw$Sample/fs
   return(data.raw)
 }
+
+
+#' Scan HTI metadata in folder
+#'
+#' This function will scan all PAT files in a given folder and return the metadata accociated with them.
+#' This can be used for filtering your files by recording time before analysing.
+#'
+#' @param folder
+#'
+#' @return data.frame of metadata
+#' @export
+#'
+#' @examples
+HIT.meta <- function(folder){
+  require(R.utils)
+
+  #folder <- '/mnt/Backup/DaysAgo.0/Jacobahaven_2017/Experiment_2017_FloatingPen/HTI'
+  files <- dir(path = folder, pattern = '.PAT')
+
+  ## Match Locale with data set (Englsih, US)
+  Sys.setlocale(category = 'LC_TIME','en_US.UTF-8')
+  #Sys.getlocale()
+
+  #i <- files[1]
+  meta <- data.frame()
+  for(i in files){
+    full.path <- paste0(folder,'/',i)
+    conn <- file(full.path, open = 'r')
+
+    ## Read all lines in file
+    total.lines <- countLines(full.path)
+    lines <- readLines(con = conn, n = total.lines, ok = T, encoding = 'UTF-8')
+    close(conn)
+
+    ## Scan for metadata
+    #### Grab start time
+    idx.start <- grep(x = lines,pattern = 'Start')
+    if(length(idx.start > 0)){
+        if(gregexpr('Processing', lines[idx.start])[[1]] > -1){
+          start.type <- 'Processing'}else{start.type <- 'Sequence'}
+        idx.cut <- c(13+nchar(start.type),
+                     gregexpr(pattern = ' Peak Location',text = lines[idx.start])[[1]][1] - 1)
+        start.string <- substr(x = lines[idx.start], start = idx.cut[1], stop = idx.cut[2])
+        start.posix <- as.POSIXct(strptime(x = start.string,
+                                           format = "%a %b %d %H:%M:%S %Y",
+                                           tz = ""))
+    }else{
+      start.posix <- NA
+      start.type <- 'NA'
+    }
+
+    #### Grab end time
+    idx.stop <- grep(x = lines,pattern = 'Stop')
+    if(length(idx.stop > 0)){
+      if(gregexpr('Processing', lines[idx.stop])[[1]] > -1){
+        stop.type <- 'Processing'
+      }else{
+        stop.type <- 'Sequence'
+      }
+      idx.cut <- c(12+nchar(stop.type),
+                   gregexpr(pattern = ' Peak Location',text = lines[idx.stop])[[1]][1] - 1)
+      stop.string <- substr(x = lines[idx.stop], start = idx.cut[1], stop = idx.cut[2])
+      stop.posix <- as.POSIXct(strptime(x = stop.string,
+                                         format = "%a %b %d %H:%M:%S %Y",
+                                         tz = ""))
+    }else{
+      stop.posix <- NA
+      stop.type <- 'NA'
+    }
+
+    meta <- rbind(meta,
+                  data.frame(file = substr(i,start = 1, stop = nchar(i)-4),
+                             start = start.posix,
+                             start.type = start.type,
+                             stop = stop.posix,
+                             stop.type = stop.type))
+  }
+
+  return(meta)
+}
