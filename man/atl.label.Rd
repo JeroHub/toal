@@ -27,9 +27,6 @@ Increase this value, if you are missing detections due to the tag changing frequ
 
 \item{plot}{Show ggplot graphics for error checking segments.}
 }
-\value{
-
-}
 \description{
 Acoustic Tag Localization: Label tags
 }

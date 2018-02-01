@@ -1,24 +1,20 @@
 #' Detect pulse onset frequencies of acoustic tags
 #'
-#' @param detections A vector of detection times (seconds) returned from \code{read.HTI.RAT()}.
-#' @param frequencies A vector of frequencies to test
-#' @param fs Sample rate of \code{detections}
-#' @param n.tags The number of tags with unique frequencies
-#' @param plot Set to T to plot results with ggplot
+#' @param detections A vector of detection times (seconds) from a single hydrophone.
+#' @param frequencies A vector of frequencies to test.
+#' @param n.tags The number of tags with unique frequencies.
+#' @param miNGap The minimum gap between unique tag frequencies (Hz).
+#' @param plot Set to T to plot results with ggplot.
 #'
-#' @details This function finds the unique tag frequencies in setups where each tagged individual has a unique pulse interval on their acoustic tag.
+#' @details This function uses convolution to find the unique tag frequencies in setups where each tagged individual has a unique pulse interval on their acoustic tag.
 #' You can set \code{plot = T} for error checking.
-#' The resulting graph will show the mean resultant length of the circular mean for each tested frequency.
-#' The resulting plot should show a clear, sharp peak for each unique tag frequency.
 #'
 #' @return
 #' @export
 #'
-#' @examples
-TagFreq.detect <- function(detections, frequencies, fs, n.tags, plot = F,
-                           pulsePeriodDistance.idx = 10){
+TagFreq.detect <- function(detections, frequencies, n.tags, minGap, plot = F){
 
-  ## Function for finding r.baas.circularr per frequency
+  ## Function for finding r.bars.circular per frequency
   frequency.rbar <- function(detections, frequency){
     dt <- 1/frequency
     ## Convert detections into radians relative to sample frequency
@@ -34,20 +30,21 @@ TagFreq.detect <- function(detections, frequencies, fs, n.tags, plot = F,
 
   # Detect 4 highest peaks
   #browser()
+  # List all peaks
   peaks.idx <- which(diff(sign(diff(Freqs$r.bar))) < 0) + 1
+  # Order peaks by histogram values
   peaks.order <- order(Freqs$r.bar[peaks.idx], decreasing = T)
+
   ## Remove peaks which are too close to each other
   i <- 1
-  while(i < n.tags){
-    idx <- i + which(abs(peaks.order[i] - peaks.order[(i+1):n.tags]) <= pulsePeriodDistance.idx)
+  while((i < n.tags) & (length(peaks.order) > n.tags)){
+    idx <- i + which(abs(frequencies[peaks.idx[peaks.order[i]]] - frequencies[peaks.idx[peaks.order[(i+1):length(peaks.order)]]]) <= minGap)
     if(length(idx) > 0){
-      ## remove lesser clustered peaks
+      ## remove clustered peaks
       peaks.order <- peaks.order[-idx]
-      ## Reset index to 1
-      i <- 1
-    }else{
-      i <- i + 1
     }
+    i <- i + 1
+    head(frequencies[peaks.idx[peaks.order]])
   }
 
   peaks.idx.filt <- peaks.idx[peaks.order[1:n.tags]]
@@ -72,20 +69,19 @@ TagFreq.detect <- function(detections, frequencies, fs, n.tags, plot = F,
 #'This functions returns the indicies of those pulse detections which match with the provided pulse period frequencies.
 #'Set \code{plot = T} to show filtering results in ggplot.
 #'
-#' @param detections A vector of detection times (seconds) returned from \code{read.HTI.RAT()}.
-#' @param frequencies A vector of pulse onset frequencies to filter.
-#' @param fs Sample rate of \code{detections}
-#' @param plot Set to T to plot results with ggplot
-#' @param maxDistance The maximum distance the individual can be from the hydrophone (meters).
-#' This is used to calculate the filter bandwidth.
+#' @param detections A vector of detection times (seconds).
+#' @param frequencies A vector of pulse onset frequencies (Hz) to filter.
 #' @param sensitivity Bandwidth in radians around target frequency.
+#' @param plot Set to T to plot results with ggplot
+
 #' Increase this value, if you are missing detections due to the tag changing frequency over time.
 #'
 #' @return
+#' @export
 #'
-#' @examples
-TagFreq.filter <- function(detections, frequencies, fs, plot = F, pulsePeriodDistance.idx = 10,
-                           sensitivity = 0.1, time.shift.sensitivity = 3){
+TagFreq.filter <- function(detections, frequencies,
+                           sensitivity = 0.1,
+                           plot = F){
 
   ## Add column for rads
   detections <- data.frame(seconds = detections,
@@ -98,8 +94,9 @@ TagFreq.filter <- function(detections, frequencies, fs, plot = F, pulsePeriodDis
   ## Loop through each frequency
   for(i in frequencies){
 
+    # Calc tag pulse period
     dt <- 1/i
-    ## Calculate possible TOA error due to location change
+
     maxError.rad <- sensitivity
 
     ## Convert seconds to radians
@@ -164,6 +161,7 @@ TagFreq.filter <- function(detections, frequencies, fs, plot = F, pulsePeriodDis
 #' @param plot Show ggplot graphics for error checking segments.
 #'
 #' @return
+#' @expor
 #'
 #' @examples
 atl.label <- function(data, start, duration, n.tags, maxDistance, sensitivity,

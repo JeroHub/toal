@@ -4,27 +4,17 @@
 \alias{TagFreq.filter}
 \title{Filter pulse onsets by frequency}
 \usage{
-TagFreq.filter(detections, frequencies, fs, plot = F,
-  pulsePeriodDistance.idx = 10, sensitivity = 0.1,
-  time.shift.sensitivity = 3)
+TagFreq.filter(detections, frequencies, sensitivity = 0.1, plot = F)
 }
 \arguments{
-\item{detections}{A vector of detection times (seconds) returned from \code{read.HTI.RAT()}.}
+\item{detections}{A vector of detection times (seconds).}
 
-\item{frequencies}{A vector of pulse onset frequencies to filter.}
+\item{frequencies}{A vector of pulse onset frequencies (Hz) to filter.}
 
-\item{fs}{Sample rate of \code{detections}}
+\item{sensitivity}{Bandwidth in radians around target frequency.}
 
-\item{plot}{Set to T to plot results with ggplot}
-
-\item{sensitivity}{Bandwidth in radians around target frequency.
+\item{plot}{Set to T to plot results with ggplot
 Increase this value, if you are missing detections due to the tag changing frequency over time.}
-
-\item{maxDistance}{The maximum distance the individual can be from the hydrophone (meters).
-This is used to calculate the filter bandwidth.}
-}
-\value{
-
 }
 \description{
 This functions returns the indicies of those pulse detections which match with the provided pulse period frequencies.

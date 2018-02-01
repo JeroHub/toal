@@ -1,0 +1,70 @@
+---
+title: "Cleaning Data"
+author: "Vignette Author"
+date: "`r Sys.Date()`"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{Vignette Title}
+  %\VignetteEncoding{UTF-8}
+  %\VignetteEngine{knitr::rmarkdown}
+editor_options: 
+  chunk_output_type: console
+---
+
+Here we'll show an example of removing reflections from an acosutic tag dataset.
+In this example, each individual is marked by the unique pulse rate interval on their acoustic tag.
+We'll use a HTI dataset which has been loaded and saved as an example dataset for this package.
+
+First, we'll figure out what the pulse rate intervals of from our tags.
+
+```{r}
+## Load dataset
+# Only load hydrophone 1, and all detections within first minute
+dataset <- dataset_HTI
+dataset.H1 <- subset(dataset, Hydrophone == 1 & seconds < 60)
+
+## Find unique pulse rate intervals
+?TagFreq.detect
+pulseIntervals <- TagFreq.detect(dataset.H1$seconds,n.tags = 4,plot = T,
+                     frequencies = seq(0.9,1.1,0.001), minGap = 0.0001)
+```
+
+The peaks in the histogram are not much higher than the noise floor of the plot.
+This suggests that we might have to increase our frequency resolution to get better results.
+You can continue fine-tuning your search frequency cector until you get a high resolution result.
+
+```{r}
+pulseFrequencies <- TagFreq.detect(dataset.H1$seconds,n.tags = 4,plot = T,
+                     frequencies = seq(0.95,1.05,0.0001), minGap = 0.0001)
+```
+
+This plot looks good, although we're detecting multiple peaks in the same frequency.
+You can adjust the `minGap` parameter to filter out the effects of clustered peaks.
+
+```{r}
+pulseFrequencies <- TagFreq.detect(dataset.H1$seconds, n.tags = 4, plot = T,
+                     frequencies = seq(0.98,1.02,0.00001), minGap = 0.001)
+
+pulseFrequencies
+```
+
+Now we see 4 clearly defined peaks, so we'll keep these as our unique identifiers for our individuals.
+
+Next, we'll use the filter functions to correlate each pulse detection with the correct individual based on their tag pulse frequency.
+In the plot below, red indicates detections that will be assigned to the individual.
+You can use the `sensitivity` (radians) parameter to adjust your filter bandwidth.  
+
+```{r}
+require(toal)
+?TagFreq.filter
+tag.filter.idx <- TagFreq.filter(detections = dataset.H1$seconds,
+                     frequencies = pulseFrequencies, sensitivity = 0.1, plot = T)
+
+dataset.H1.Tag1 <- dataset.H1$seconds[tag.filter.idx[[1]]]
+```
+
+Now we've isolated the detections of individual 1 on reciever hydrphone 1, we can filter out the reflections.
+
+```{r}
+
+```
