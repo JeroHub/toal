@@ -10,16 +10,14 @@ Type objective_function<Type>::operator() ()
 
 	PARAMETER_ARRAY(XY);	//Position at time of ping
 	PARAMETER_VECTOR(top);		// Estimated time of pings
-	PARAMETER_VECTOR(ss); // speed of sound in water
 
-	PARAMETER(logD_xy);    		// Diffusivity of fish
+	PARAMETER(logD_xy);    		// Diffusivity of fish (i.e. log variance)
 	Type D_xy = exp(logD_xy);
 
 	PARAMETER(logSigma_bi);		// Sigma for burst interval
 	Type sigma_bi = exp(logSigma_bi);
 
-	PARAMETER(logD_v);    		// Diffusivity of sound speed
-	Type D_v = exp(logD_v);
+	PARAMETER(ss);    		// Speed of sound
 
 	PARAMETER(logSigma_toa);	// Sigma TimeOfArrival
 	Type sigma_toa = exp(logSigma_toa);
@@ -38,13 +36,27 @@ Type objective_function<Type>::operator() ()
 	// Lower values is better fitting model
 	parallel_accumulator<Type> nll(this);
 
+	/*************************************************
+	 * Observation model
+	 *************************************************/
+
 	for(int i=0; i<np; ++i) //iterate pings
 	{
 		for(int h=0; h<nh; ++h){ //iterate hydros
 			if(toa(h,i) != -9999){ //ignore NA's...
-				dist(h,i) = sqrt((H(h,0)-XY(i,0))*(H(h,0)-XY(i,0)) + (H(h,1)-XY(i,1))*(H(h,1)-XY(i,1)));
-				mu_toa(h,i) = top(i) +  dist(h,i)/ss(i);
+			  // Calculate Distance from hydrohone
+				dist(h,i) = sqrt(
+				    (H(h,0)-XY(i,0))*(H(h,0)-XY(i,0)) +
+				    (H(h,1)-XY(i,1))*(H(h,1)-XY(i,1))
+			  );
+
+			  // Calc expected toa from distance and estimated ping time
+				mu_toa(h,i) = top(i) + dist(h,i)/ss;
+
+				// Residual time of arrival (compared to mean)
 				Type eps = toa(h,i) - mu_toa(h,i);
+
+				// Negative log liklihood from time of arrival
 				nll -= log( G_part * dnorm(eps, Type(0),sigma_toa,false) + 		//Gaussian part
 							t_part * dt(eps/scale, Type(3.0), false) / scale );	//t part
 			}
@@ -60,16 +72,6 @@ Type objective_function<Type>::operator() ()
 		} else {
 			nll -= dnorm(XY(i,0), XY(i-1,0),sqrt(2*D_xy*(top(i) - top(i-1))),true);
 			nll -= dnorm(XY(i,1), XY(i-1,1),sqrt(2*D_xy*(top(i) - top(i-1))),true);
-		}
-	}
-
-	//speed of sound component
-	for(int i = 0; i < np; ++i)
-	{
-		if(i == 0){
-			nll -= dnorm(ss(0),Type(1430.0),Type(25.0),true);
-		} else {
-			nll -= dnorm(ss(i), ss(i-1),sqrt(2*D_v), true);
 		}
 	}
 
