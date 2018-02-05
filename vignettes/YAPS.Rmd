@@ -5,8 +5,10 @@ date: "`r Sys.Date()`"
 output: rmarkdown::html_vignette
 vignette: >
   %\VignetteIndexEntry{Vignette Title}
-  %\VignetteEngine{knitr::rmarkdown}
   %\VignetteEncoding{UTF-8}
+  %\VignetteEngine{knitr::rmarkdown}
+editor_options: 
+  chunk_output_type: console
 ---
 
 ## YAPS: 2D example
@@ -24,7 +26,7 @@ vignette: >
 
   #### Prepare TOAs
   # Must be in a matrix, where rows are hydrophones, and columns are pings
-  toa <- read.table('./yaps_sciRep/toa.txt') #Time-of-arrival obtained from the hydrophones.
+  toa <- read.table('../yaps_sciRep/toa.txt') #Time-of-arrival obtained from the hydrophones.
   toa <- t(as.matrix(toa))
 
   #### Subset TOAs

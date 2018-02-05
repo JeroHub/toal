@@ -14,7 +14,7 @@ Type objective_function<Type>::operator() ()
 	PARAMETER(logD_xy);    		// Diffusivity of fish movement distances (i.e. log variance)
 	Type D_xy = exp(logD_xy);
 	PARAMETER(logD_z);
-	Type D_xy = exp(logD_z);
+	Type D_z = exp(logD_z);
 
 	PARAMETER(logSigma_bi);		// Sigma for burst interval
 	Type sigma_bi = exp(logSigma_bi);

@@ -24,16 +24,16 @@ yaps2D <- function(hydrophone.pos, toa){
   # runExample(all=TRUE)
 
   #Compile TMB-model - only needed once
-  compile("./src/yaps.cpp")
+  compile("./src/yaps3D.cpp")
 
 
   #### Compile and run TMB-model
   # Load compiled library
-  dyn.load(dynlib("./src/yaps"))
+  dyn.load(dynlib("./src/yaps3D"))
   # Convert to R function
   obj <- MakeADFun(data = datTmb,
                    parameters = params,
-                   DLL="yaps",
+                   DLL="toal",
                    random=c("XY","top"), # Position, speed of sound, time of pings
                    inner.control = list(maxit = 500000),
                    silent=F)
