@@ -40,16 +40,14 @@ Type objective_function<Type>::operator() ()
 
 	// Hydrophone movement (along axis facing tag)
 	DATA_ARRAY(tag_movement);
-	PARAMETER(logD_xy);    		// Log SD of XY movement/unit time
-	Type D_xy = exp(logD_xy);
 
 	/********************************
 	* Distribution parameters
 	* For mixing of distributions
 	********************************/
-	// Mixed Guassian/t for toa estimates
+	// Mixed Guassian/t distributions for toa estimates
 	PARAMETER(logScale_toa);		// scale-parameter for t-dist
-	Type scale = exp(logScale_toa);
+	Type scale_toa = exp(logScale_toa);
 	PARAMETER(log_t_part);		// t-part of mixture model
 	Type t_part = exp(log_t_part);
 	Type G_part = Type(1.0) - t_part; // Gaussian part of mixture model

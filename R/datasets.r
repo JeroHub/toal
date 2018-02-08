@@ -8,10 +8,8 @@
 
 #' Example Tracking data for testing localization methods
 #'
-#' Contains:
-#' \begin{enumerate}
-#' \item Pen_SeaBass: Seabass swimming in a small scale mesocosm setup.
-#' \end{enumerate}
+#' Example dataset containing wwimming path of Seabass in a small scale mesocosm setup.
+#' Approximate temporal resolution of 1Hz.
 #'
 #' @format A set of lists (one for each dataset), where each list contains two dataframes: One for the positions over time, and another for the hydrophone locations.
 #'

@@ -9,9 +9,7 @@
 Pen_SeaBass
 }
 \description{
-Contains:
-\begin{enumerate}
-\item Pen_SeaBass: Seabass swimming in a small scale mesocosm setup.
-\end{enumerate}
+Example dataset containing wwimming path of Seabass in a small scale mesocosm setup.
+Approximate temporal resolution of 1Hz.
 }
 \keyword{datasets}

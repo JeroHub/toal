@@ -5,29 +5,63 @@ date: "`r Sys.Date()`"
 output: rmarkdown::html_vignette
 vignette: >
   %\VignetteIndexEntry{Vignette Title}
-  %\VignetteEngine{knitr::rmarkdown}
   %\VignetteEncoding{UTF-8}
+  %\VignetteEngine{knitr::rmarkdown}
+editor_options: 
+  chunk_output_type: console
 ---
 
 `toal` holds a few different functions for localizing your acoustic tag data.
 This vignette will demonstrate the differences between these methods.
+For the sake of comparison, we
 
 ## YAPS
 
-### YAPS Continual Swimming
+YAPS (Yet Another Positioning System) was proposed by Baktoft et al. (2017) and estimates positions from tag pulses by random walk models.
+This results in much more robust localization methods as compared to those which are based on traditional localization methods based soled on differences in times of arrival as compared to areference hydrophone.
+We've adapted the proposed YAPS models for different situations, with a particular focus on mesocosm experiments where an acoustically tagged fish is being tracked via a three-dimentional hydrophone array in a restricted swimming area.
 
-This is a modification of YAPS based on the following assumptions:
+Some key differences between Baktoft's YAPS and the flavors of YAPS presented here is that we:
 
-- Swimming speed between tag pulses follows a Guassian distribution
-- Speed of sound through water is a constant value
-- Hydrophone array arranged for 3D positioning (all hydrophone not positioned along a single plane)
+- Assume a constant speed of sound throughout the sample period.
+- Assume hydrophones have errors due to guassian random movement in three-dimentions.
+- Works only on 3D positioning (as opposed to only on 2D).
+
+While the extra assumptions of the YAPS model helps with position estimate robustness, if these assumptions are not clearly met there is a risk of misleading results.
+Here we'll walk through some examples testing our YAPS flavors on "simulated data".
+The "simulated data" presented here consists of datasets of estimated fish positions from previous experiments.
+These positions have been cleaned and we will treat these as the true positions of the simulated fishs we are working with.
+Finally, we can simulate sources of error on top of our "true fish" positions.
+These sources of error include:
+
+- Guassian movement of reciever hydrophones, as assumed to be a result of wave action.
+- Sample rate limitations
 - 
 
-```{r setup, include = FALSE}
-knitr::opts_chunk$set(
-  collapse = TRUE,
-  comment = "#>"
-)
+
+
+### YAPS Continual Swimming
+
+This flavor of YAPS is based on the following assumptions:
+
+- Swimming speed between tag pulses follows a Guassian distribution (i.e. no stationary resting periods)
+- Speed of sound through water is a constant value
+- Hydrophone array arranged for 3D positioning (all hydrophone not positioned along a single plane)
+
+To test this out we'll use some previously collected data on sea bass
+
+```{r} 
+data("Pen_SeaBass")
+Pen_SeaBass
+
+fish.ids <- unique(Pen_SeaBass[[1]]$Period)
+
+## Get track time-or-arrival values for first fish
+toa <- xyz2toa(hydrophone.positions = Pen_SeaBass[[2]][,2:4], 
+               tag.positions = subset(Pen_SeaBass[[1]],
+                                      Period == fish.ids[1])[,c(3:5,1)])
+
+
 ```
 
 ### YAPS Swimming/Resting
@@ -42,40 +76,6 @@ Vignettes are long form documentation commonly included in packages. Because the
 
 Note the various macros within the `vignette` section of the metadata block above. These are required in order to instruct R how to build the vignette. Note that you should change the `title` field and the `\VignetteIndexEntry` to match the title of your vignette.
 
-## Styles
+## References
 
-The `html_vignette` template includes a basic CSS theme. To override this theme you can specify your own CSS in the document metadata as follows:
-
-    output: 
-      rmarkdown::html_vignette:
-        css: mystyles.css
-
-## Figures
-
-The figure sizes have been customised so that you can easily put two images side-by-side. 
-
-```{r, fig.show='hold'}
-plot(1:10)
-plot(10:1)
-```
-
-You can enable figure captions by `fig_caption: yes` in YAML:
-
-    output:
-      rmarkdown::html_vignette:
-        fig_caption: yes
-
-Then you can use the chunk option `fig.cap = "Your figure caption."` in **knitr**.
-
-## More Examples
-
-You can write math expressions, e.g. $Y = X\beta + \epsilon$, footnotes^[A footnote here.], and tables, e.g. using `knitr::kable()`.
-
-```{r, echo=FALSE, results='asis'}
-knitr::kable(head(mtcars, 10))
-```
-
-Also a quote using `>`:
-
-> "He who gives up [code] safety for [code] speed deserves neither."
-([via](https://twitter.com/hadleywickham/status/504368538874703872))
+Baktoft, H. Gjelland, K., Økland, F., Thygesen, U.  2017. **Positioning of aquatic animals based on time-of-arrival and random walk models using YAPS (Yet Another Positioning Solver)**. *Scientific Reports*. 7:17294.
