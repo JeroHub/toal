@@ -32,19 +32,17 @@ xyz2toa <- function(hydrophone.positions,
   toa <- matrix(ncol = n.hydro,nrow = n.pings)
   # Calculate real toa for each ping and reciever
   for(i in 1:n.hydro){
-    browser()
     toa[,i] <- apply(
       X = tag.positions,
       MARGIN = 1,
       FUN = function(x){
-        browser()
-        return(distance(x[1:3],hydrophone.positions[i,1:3]) + x[4])
+        return((distance(x[1:3],hydrophone.positions[i,1:3])/c) + x[4])
       })
   }
 
   ## Label and return matrix
-  rownames(toa) <- paste0('Ping ',1:nrow(tag.positions))
-  colnames(toa) <- paste0('Hydrophone ',1:N)
+  rownames(toa) <- paste0('Ping ',1:n.pings)
+  colnames(toa) <- paste0('Hydrophone ',1:n.hydro)
   return(toa)
 }
 
@@ -56,7 +54,6 @@ xyz2toa <- function(hydrophone.positions,
 #'
 #' @param toa An `n`-by-`m` matrix or data.frame, holding the time-of-arrival values, in seconds.
 #' The number of pings is `n`  while `m` is the number of hydrophones in the array.
-#' @param tag.positions An `n`-by-4 matrix or dataframe holding the x, y, z positions and time in seconds of the tag pulses where `n` is the number of pulses.
 #' @param c Speed of sound through the medium (meters per second).
 #' @param reciever.fs The sample rate of the reciever (Hz) used to simulate toa error.
 #' @param hydrophoneMovement.sd The standard deviation of the 0 centered Guassian distribution used to simulate toa error due to hydrophone movement.
@@ -66,7 +63,7 @@ xyz2toa <- function(hydrophone.positions,
 #'
 #' @return
 #' @export
-toaSimError <- function(toa, reciever.fs = c(),
+toaSimError <- function(toa, reciever.fs = c(), c = 1500,
                         hydrophoneMovement.sd = c(), p.detect = c()){
 
   #############################################################
@@ -80,10 +77,10 @@ toaSimError <- function(toa, reciever.fs = c(),
       toa <- toa + (error.hydroMovement/c)
     }else if(length(hydrophoneMovement.sd) == n.hydro){
       # Unique error values for each hydrophone
-      for(i in 1:n.hydro){
-        error.hydroMovement <- rnorm(n = length(toa[,i]),
+      for(h in 1:n.hydro){
+        error.hydroMovement <- rnorm(n = length(toa[,h]),
                                      mean = 0, sd = hydrophoneMovement.sd)
-        toa[,i] <- toa[,i] + (error.hydroMovement/c)
+        toa[,h] <- toa[,h] + (error.hydroMovement/c)
       }
     }else{
       message('Parameter hydrophoneMovement.sd must be a length equal to 1 or the number of hydrophones in the reciever array (', n.hydro,').')
@@ -104,17 +101,17 @@ toaSimError <- function(toa, reciever.fs = c(),
     if(length(p.detect) == 1){
       ## Single error value for all hydrophones
       ## randomly assign NA values to each detection
-      error.detect <- rbinom(n = length(toa),
+      error.prob <- rbinom(n = length(toa),
                              prob = p.detect,
                              size = 1)
-      toa[which(error.detect)] <- NA
+      toa[which(error.prob == 0)] <- NA
     }else if(length(p.detect) == n.hydro){
       # Unique error values for each hydrophone
       for(i in 1:n.hydro){
-        error.detect <- rbinom(n = length(toa[,i]),
+        error.prob <- rbinom(n = length(toa[,i]),
                                prob = p.detect,
                                size = 1)
-        toa[which(error.detect),i] <- NA
+        toa[which(error.detect) == 0,i] <- NA
       }
     }else{
       message('Parameter p.detect must be a length equal to 1 or the number of hydrophones in the reciever array (', n.hydro,').')

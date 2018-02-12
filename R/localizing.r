@@ -120,7 +120,7 @@ TOA.localization <- function(toa, hydrohpone.positions, c = 1500){
       temp.2 <- 0.5 * solve(S) %*% (delta - (2*(R_s.2 * d)))
 
       error.temp <- delta - 2*(R_s.1*d) - 2*(S %*% temp.1)
-      error <- sqrt(sum(error.temp^2)) # alc sum of squared error
+      error <- sqrt(sum(error.temp^2)) # calc sum of squared error
 
       estimates[((i-1)*2) + 1,] <- data.frame(id = i, t(temp.1), error = error, eq = '+', stringsAsFactors = F)
       estimates[((i-1)*2) + 2,] <- data.frame(id = i, t(temp.2), error = error, eq = '-', stringsAsFactors = F)
