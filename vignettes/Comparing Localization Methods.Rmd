@@ -11,9 +11,12 @@ editor_options:
   chunk_output_type: console
 ---
 
+```{r,include=FALSE}
+knitr::opts_chunk$set(fig.width=8, fig.height=6)
+```
+
 `toal` holds a few different functions for localizing your acoustic tag data.
 This vignette will demonstrate the differences between these methods.
-For the sake of comparison, we
 
 ## YAPS
 
@@ -25,7 +28,7 @@ Some key differences between Baktoft's YAPS and the flavors of YAPS presented he
 
 - Assume a constant speed of sound throughout the sample period.
 - Assume hydrophones have errors due to guassian random movement in three-dimentions.
-- Assume a 0 centered guassian distribution of inter-pulse-intervals
+- Assume a 0 centered guassian distribution of inter-pulse-intervals (fixed tag pulse interval).
 - Works only on 3D positioning (as opposed to only on 2D).
 
 While the extra assumptions of the YAPS model helps with position estimate robustness, if these assumptions are not clearly met there is a risk of misleading results.
@@ -42,11 +45,13 @@ These sources of error include:
 
 This flavor of YAPS is based on the following assumptions:
 
-- Swimming speed between tag pulses follows a Guassian distribution (i.e. no stationary resting periods)
-- Speed of sound through water is a constant value
-- Hydrophone array arranged for 3D positioning (all hydrophone not positioned along a single plane)
+- Swimming speed between tag pulses follows a Guassian distribution (i.e. no stationary resting periods).
+- Speed of sound through water is a constant, unknown value.
+- Hydrophone array arranged for 3D positioning (hydrophones are not positioned along a single 2D plane).
+- Fixed tag pulse interval.
 
 To test this out we'll use some previously collected data on sea bass.
+We'll use a simulated hydrophone array with a shallow depth to exaggerate potential error along z axis positions.
 
 ```{r} 
 require(toal)
@@ -61,17 +66,24 @@ c.real <- rnorm(n = 1, mean = 1500,sd = 1)
 
 ## Get track time-or-arrival values for first fish
 fish.ids <- unique(Pen_SeaBass[[1]]$Period)
-xyz.true <- subset(Pen_SeaBass[[1]], Period == fish.ids[1])[1:200,c(3:5,1)]
+xyz.true <- subset(Pen_SeaBass[[1]], Period == fish.ids[1])[1:150,c(3:5,1)]
 
-toa.expected <- xyz2toa(hydrophone.positions = Pen_SeaBass[[2]][,2:4], 
+hydro.pos <- data.frame(x = c(11.15, 11.15, 3, 3),
+                        y = c(11.15,3,11.15,3),
+                        z = c(1.8,3,3,1.8))
+
+toa.expected <- xyz2toa(hydrophone.positions = hydro.pos, 
                tag.positions = xyz.true,
                c = c.real)
 
 ## Simulate soruces of error
-hydrophoneMovement.sd <- 0.05
-pingDetection <- 0.95
-ggplot(data = data.frame(ms = rnorm(n = 10000,mean = 0, sd = hydrophoneMovement.sd)*100)) + 
-  geom_histogram(aes(x = ms)) + ggtitle('Simulated Hydrophone movement (along direction of sound propagation)') +
+hydrophoneMovement.sd <- 0.03
+pingDetection <- 0.97
+ggplot(data = data.frame(ms = rnorm(n = 10000,
+                                    mean = 0,
+                                    sd = hydrophoneMovement.sd)*100)) + 
+  geom_histogram(aes(x = ms)) + 
+  ggtitle('Simulated Hydrophone movement (along direction of sound propagation)') +
   xlab('Centimeters') + theme_bw()
 
 toa.real <- toaSimError(toa = toa.expected, reciever.fs = 12000,
@@ -79,26 +91,15 @@ toa.real <- toaSimError(toa = toa.expected, reciever.fs = 12000,
                         p.detect = pingDetection, c = c.real)
 
 # Plot differences between expected and real toa
-ggplot(data = rbind(H1 = matrix(toa.real[,1] - toa.expected[,1], ncol = 1),
-                    H1 = matrix(toa.real[,2] - toa.expected[,2], ncol = 1),
-                    H1 = matrix(toa.real[,3] - toa.expected[,3], ncol = 1),
-                    H1 = matrix(toa.real[,4] - toa.expected[,4], ncol = 1)))
-
-for(i in 1:4){
-  hist(()*1000, main = paste0('Latency Error/Detection: H',i),
-       xlab = 'Milliseconds', col = 'grey')
-}
-par(mfrow = c(1,1))
-
-hist(apply(X = toa.real, MARGIN = 1,
-           FUN = function(x){
-             length(which(!is.na(x)))
-             }),breaks = c(0:4),
-     col = 'grey', main = 'Hydrophone Detections/Ping',xlab = '# Hydrophones')
-
-### Testing ###
-hydrophone.pos <- Pen_SeaBass$hydrophones[,2:4]
-toa <- toa.real
+ggplot(data = as.data.frame(rbind(
+  data.frame(Hydrophone = factor(1), ms = 1000*matrix(toa.real[,1] - toa.expected[,1], ncol = 1)),
+  data.frame(Hydrophone = factor(2), ms = 1000*matrix(toa.real[,2] - toa.expected[,2], ncol = 1)),
+  data.frame(Hydrophone = factor(3), ms = 1000*matrix(toa.real[,3] - toa.expected[,3], ncol = 1)),
+  data.frame(Hydrophone = factor(4), ms = 1000*matrix(toa.real[,4] - toa.expected[,4], ncol = 1))))) +
+  geom_histogram(aes(x = ms), bins = 40) + 
+  facet_wrap(facets = ~ Hydrophone, ncol = 2) +
+  ggtitle('Simulated Latency Error per Detection') +
+  xlab('Milliseconds') + theme_bw()
 ```
 
 Now we have our dataset, we'll apply YAPS and compare its results to that of spherical interpolation.
@@ -107,43 +108,39 @@ We'll also try one with 5000 to see if that gives a noticable improvement.
 More iterations should result in potentially more accurate results.
 We'll also time how long each method takes.
 
-```{r}
-require(tictoc)
+```{r, warning=F}
 ## Spherical interopolation
-tic();estimates.si <- TOA.localization(toa = toa.real,
-                                 hydrohpone.positions = Pen_SeaBass[[2]][,2:4],
-                                 c = c); toc()
+estimates.si <- TOA.localization(toa = toa.real,
+                                 hydrohpone.positions = hydro.pos,
+                                 c = c)
 ```
 
-We'll mute the output from this code block...
+We'll mute the output from this code block... as we've set YAPS to be very verbose during its run so we can check out the optimization while its running.
+We've setup this function to first estimate the position using spehrical interpolation.
+These preliminatry results will then be used as starting values in the YAPS model to speed up the optimization.
 
 ```{r,results=F, message=F, warning=F}
 ## YAPS-Pelagic
-tic(); estimates.yaps.p.2000 <- yaps.pelagic(toa = toa.real, 
-                                 hydrophone.pos = Pen_SeaBass[[2]][,2:4],
-                                 c = c, max.iterations = 5000); toc()
-
+estimates.yaps.p <- yaps.pelagic(toa = toa.real, 
+                                 hydrophone.pos = hydro.pos,
+                                 c = c, max.iterations = 5000)
 ```
 
-Now we'll plot the results and compare the Shperical interpolation, which is a more conventional solution to localization, to YAPS.
+Now we'll plot the results and compare the Spherical interpolation, which is a more conventional solution to localization.
 
 ```{r}
-require(ggplot2)
 require(magrittr)
 
 ## Append positional data
-results <- rbind(as.matrix(estimates.si[estimates.si$eq == '-',2:4]),
-                 as.matrix(estimates.si[estimates.si$eq == '+',2:4]),
-                 as.matrix(estimates.yaps.p.2000[,1:3]),
+results <- rbind(as.matrix(estimates.si[estimates.si$eq == '+',2:4]),
+                 as.matrix(estimates.yaps.p[,1:3]),
                  as.matrix(xyz.true[,1:3])) %>% 
   as.data.frame()
 
-## Append model identifiers
-results$Model <- c(rep('SI-', times = dim(estimates.si[estimates.si$eq == '-',])[1]),
-                   rep('SI+', dim(estimates.si[estimates.si$eq == '+',])[1]),
-                   rep('YAPS.p.2000', times = dim(estimates.yaps.p.2000)[1]),
+## Get results from all models in a long form data.frame for plotting
+results$Model <- c(rep('SI+', dim(estimates.si[estimates.si$eq == '+',])[1]),
+                   rep('YAPS.p', times = dim(estimates.yaps.p)[1]),
                    rep('True', times = dim(xyz.true)[1]))
-
 row.names(results) <- NULL
 head(results)
 
@@ -157,18 +154,18 @@ ggplot(data = results) +
   scale_size_manual(values = c('SI-' = lt,
                               'SI+' = lt,
                               'True' = lt*2,
-                              'YAPS.p.2000' = lt)) +
+                              'YAPS.p' = lt)) +
   scale_linetype_manual(values = c('SI-' = 1,
                               'SI+' = 1,
                               'True' = 2,
-                              'YAPS.p.2000' = 1)) +
+                              'YAPS.p' = 1)) +
   scale_color_manual(values = c('SI-' = 'red',
                               'SI+' = 'red',
                               'True' = 'green',
-                              'YAPS.p.2000' = 'blue')) +
+                              'YAPS.p' = 'blue')) +
   ggtitle('Horizontal Plane')
 
-ggplot(data = subset(results, subset = Model != 'SI-')) + 
+ggplot(data = results) + 
   geom_path(aes(x = y, y = z, color = Model, size = Model,
                 linetype = Model, col = Model)) +
   coord_equal(xlim = range(xyz.true$PosY),
@@ -177,43 +174,42 @@ ggplot(data = subset(results, subset = Model != 'SI-')) +
   scale_size_manual(values = c('SI-' = lt,
                               'SI+' = lt,
                               'True' = lt*2,
-                              'YAPS.p.2000' = lt)) +
+                              'YAPS.p' = lt)) +
   scale_linetype_manual(values = c('SI-' = 1,
                               'SI+' = 1,
                               'True' = 2,
-                              'YAPS.p.2000' = 1)) +
+                              'YAPS.p' = 1)) +
   scale_color_manual(values = c('SI-' = 'red',
                               'SI+' = 'red',
                               'True' = 'green',
-                              'YAPS.p.2000' = 'blue')) +
+                              'YAPS.p' = 'blue')) +
   ggtitle('Vertical Plane')
 
-
-message('YAPS estimate c: ', attr(estimates.yaps.p.2000, 'c'),', real c: ', c.real)
+message('YAPS estimate c: ', attr(estimates.yaps.p, 'c'),
+        ', real c: ', c.real)
 ```
 
 YAPS seems to do a good job of filling in the missing detections (when less than 4 hydrophones recieve a signal).
+Additionally, YAPS seems to result in smoother paths, particularily on the z-axis which represents a worst case scenario when there was not sufficient space between the hydrophones along that axis in the experimental setup.
 
 Finally, lets look at the distribution of our error terms, hydrophone latency.
 
 ```{r}
-par(mfrow=c(2,2))
-for(i in 1:4){
-  hist((estimates.yaps.p.2000[,4+i])*1000, 
-       main = paste0('Latency Error/Detection Estimated, H',i),
-       xlab = 'Milliseconds', col = 'grey', breaks = 10)
-}
-par(mfrow=c(1,1))
-
-hist(diff(estimates.yaps.p.2000[,4]), 
-       main = paste0('Latency Error/Detection Estimated, H',i),
-       xlab = 'Milliseconds', col = 'grey', breaks = 10)
-
+ggplot(data = rbind(
+  data.frame(Hydrophone = 1, ms = 1000*matrix(estimates.yaps.p$dl_H1, ncol = 1)),
+  data.frame(Hydrophone = 2, ms = 1000*matrix(estimates.yaps.p$dl_H2, ncol = 1)),
+  data.frame(Hydrophone = 3, ms = 1000*matrix(estimates.yaps.p$dl_H3, ncol = 1)),
+  data.frame(Hydrophone = 4, ms = 1000*matrix(estimates.yaps.p$dl_H4, ncol = 1)))) +
+  geom_histogram(aes(x = ms), bins = 40) + 
+  facet_wrap(facets = ~ factor(Hydrophone), ncol = 2) +
+  ggtitle('Estimated Latency Error per Detection') +
+  xlab('Milliseconds') + theme_bw()
 ```
 
 The hydrophone latency is an issue here.
-Typically, 1 hydrophone collects all the latency error, which the remaining three have smaller than expected variance.
-I tried assuming all the hydrophones had the same SD of latency errors, but this caused very poor position estimates.
+As seen here, 1 hydrophone typically collects all the latency error (which should be distributed evenly accross all 4 hydrophones.
+Despite this, I'll keep this random effect, as in its absence, I'm guessing the locations will end up trying to compensate for this error and result in more variable resulting paths.
+A next step would be to simulate this latency error using sin waves (to replicate surface waves), resulting in a more realistic form of this latency error.
 
 ## References
 

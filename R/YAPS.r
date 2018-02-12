@@ -33,7 +33,7 @@ yaps.pelagic <- function(toa, hydrophone.pos, c, max.iterations = 10000, xyz.sta
 
   TOA.localization(toa = toa.real,
                    hydrohpone.positions = Pen_SeaBass[[2]][,2:4],
-                   c = c); toc()
+                   c = c)
 
   ###########################
   ## calc start positions
@@ -99,6 +99,7 @@ yaps.pelagic <- function(toa, hydrophone.pos, c, max.iterations = 10000, xyz.sta
     log_t_part = -3		# t-part of mixture model
   )
 
+  message('Running YAPS...')
   # Make optimization function
   obj <- MakeADFun(data = data,
                    parameters = params,
