@@ -1,0 +1,8 @@
+all: yaps3D_Pelagic.dll
+	#Comment here prevents tab from converting to space
+	# Compiling for windows...
+yaps3D_Pelagic.dll: yaps3D_Pelagic.cpp
+	Rscript --vanilla -e "TMB::compile('yaps3D_Pelagic.cpp')"
+
+clean:
+	rm -rf *o yaps3D_Pelagic.dll
