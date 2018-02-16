@@ -1,26 +1,9 @@
-#' Caclulate the circular mean
-#'
-#' @param rad A vector of radian values.
-#' @param weight A vector of weights for radian values
-#' @param verbose Can be usefull for debugging code.
-#'
-#' @return
-#' @export
-circular.mean <- function(rad,weight = c(), verbose = T){
+circular.mean <- function(rad,weight, verbose = T){
   ## Get sample size
   n <- length(rad)
 
-  if(n == 0){
-    stop('Empty vector given')
-  }
-
   ## Set weights to 1 if not specified
   if(missing(weight)){
-    weight <- rep.int(1,times = n)
-  }
-
-  ## Set weights to 1 if not specified
-  if(is.null(weight)){
     weight <- rep.int(1,times = n)
   }
 

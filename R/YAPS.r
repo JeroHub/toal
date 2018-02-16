@@ -44,17 +44,15 @@ yaps.pelagic <- function(toa, hydrophone.pos, c, max.iterations = 10000, xyz.sta
                                 c = c)
   if(dim(hydrophone.pos)[1] == 4 ){
     ## If 4 hydrophones, select best equation
-    eq.neg <- apply(subset(start.xyz, subset = eq == '-')[2:4],
-                    MARGIN = 2, FUN = 'diff')
+    eq.neg <- apply(subset(start.xyz, subset = eq == '-')[2:4], MARGIN = 2, FUN = 'diff')
     eq.neg <- sum(abs(eq.neg),na.rm = T)
-    eq.pos <- apply(subset(start.xyz, subset = eq == '+')[2:4],
-                    MARGIN = 2, FUN = 'diff')
+    eq.pos <- apply(subset(start.xyz, subset = eq == '+')[2:4], MARGIN = 2, FUN = 'diff')
     eq.pos <- sum(abs(eq.pos),na.rm = T)
     ## Pick solutions with smallest travel distance
     if(eq.neg < eq.pos){
       start.xyz <- subset(start.xyz, subset = eq == '-')[2:4]
     }else{
-      start.xyz <- subset(start.xyz, subset = er == '+')[2:4]
+      start.xyz <- subset(start.xyz, subset = eq == '+')[2:4]
       }
   }else{ # 4 or more hydrophones
     start.xyz <- start.xyz[2:4]
@@ -93,7 +91,7 @@ yaps.pelagic <- function(toa, hydrophone.pos, c, max.iterations = 10000, xyz.sta
     logSigma_dl = rep(-3,length = data$nh),		# Sigma for latency error
 
     logD_xy = -2,    		# Log SD of XY movement/unit time
-    logD_z = -2,        # Log SD of Z movement/unit time
+#    logD_z = -2,        # Log SD of Z movement/unit time
 
     logSigma_toa = -8, # Time of arrival SD
     logScale_toa = -3,		# scale-parameter for t-dist

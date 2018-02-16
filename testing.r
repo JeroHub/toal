@@ -2,14 +2,6 @@ require(zoo)
 require(TMB)
 require(toal)
 
-
-data.test <- read.HTI.RAT('~/Dropbox/PCAD4Cod/HTI data for James/AT16S012840914 (G8 4,0,48).RAT', fs = 12000)
-data.test.sub <- subset(data.test, subset = seconds < 60)
-head(data.test)
-
-TagFreq.detect(detections = data.test.sub$seconds, n.tags = 4 ,
-               frequencies = seq(0.9,1.1,0.001), plot = T, minGap = 0.01)
-
 data("Pen_SeaBass")
 
 ## Speed of sound (with simualted error)

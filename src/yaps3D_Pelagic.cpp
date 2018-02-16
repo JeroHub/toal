@@ -29,7 +29,7 @@ Type objective_function<Type>::operator() ()
 
   // XYZ distribution
   PARAMETER(logD_xy);    		// Log SD of XY movement/unit time
-  PARAMETER(logD_z);        // Log SD of Z movement/unit time
+//  PARAMETER(logD_z);        // Log SD of Z movement/unit time
 
   // TOA distribution
   PARAMETER(logSigma_toa); // Time of arrival SD (for each hydrophone)
@@ -49,11 +49,10 @@ Type objective_function<Type>::operator() ()
 
   Type sigma_toa = exp(logSigma_toa);
   Type D_xy = exp(logD_xy);
-  Type D_z = exp(logD_z);
+//  Type D_z = exp(logD_z);
   Type scale_toa = exp(logScale_toa);
   Type t_part = exp(log_t_part);
   Type G_part = Type(1.0) - t_part; // Gaussian part of mixture model
-  Type x1, y1, z1, mag, x2, y2, z2;  // For calculating delta movement vector
 
   // Type nll (negative log liklihood);
   // Lower values is better fitting model
@@ -95,25 +94,13 @@ Type objective_function<Type>::operator() ()
   * traveled along x, y, and z axes between pings.
   * SD is scaled by inter pulse interval
   *************************************************/
-  for(int i=0; i<np; ++i){
-    if(i == 0) {
-      nll -= dnorm(XYZ(0,0),Type(0),Type(1000),true);
-      nll -= dnorm(XYZ(0,1),Type(0),Type(1000),true);
-      nll -= dnorm(XYZ(0,2),Type(0),Type(1000),true);
-    } else {
-      nll -= dnorm(XYZ(i,0),
-                   XYZ(i-1,0),
+  for(int i=1; i<np; ++i){
+    nll -= dnorm(sqrt((XYZ(i,0) - XYZ(i-1,0))*(XYZ(i,0) - XYZ(i-1,0)) +
+                      (XYZ(i,1) - XYZ(i-1,1))*(XYZ(i,1) - XYZ(i-1,1)) +
+                      (XYZ(i,2) - XYZ(i-1,2))*(XYZ(i,2) - XYZ(i-1,2))),
+                   Type(0),
                    sqrt(2*D_xy*(top(i) - top(i-1))),
                    true);
-      nll -= dnorm(XYZ(i,1),
-                   XYZ(i-1,1),
-                   sqrt(2*D_xy*(top(i) - top(i-1))),
-                   true);
-      nll -= dnorm(XYZ(i,2),
-                   XYZ(i-1,2),
-                   sqrt(2*D_z*(top(i) - top(i-1))),
-                   true);
-    }
   }
 
   /*************************************************

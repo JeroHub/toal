@@ -28,7 +28,6 @@ Some key differences between Baktoft's YAPS and the flavors of YAPS presented he
 
 - Assume a constant speed of sound throughout the sample period.
 - Assume hydrophones have errors due to guassian random movement in three-dimentions.
-- Assume a 0 centered guassian distribution of inter-pulse-intervals (fixed tag pulse interval).
 - Works only on 3D positioning (as opposed to only on 2D).
 
 While the extra assumptions of the YAPS model helps with position estimate robustness, if these assumptions are not clearly met there is a risk of misleading results.
@@ -39,7 +38,7 @@ Finally, we can simulate sources of error on top of our "true fish" positions.
 These sources of error include:
 
 - Guassian movement of reciever hydrophones, as assumed to be a result of wave action.
-- Sample rate limitations be reciever setup
+- Sample rate limitations from reciever setup
 
 ### YAPS Continual Swimming
 
@@ -66,7 +65,7 @@ c.real <- rnorm(n = 1, mean = 1500,sd = 1)
 
 ## Get track time-or-arrival values for first fish
 fish.ids <- unique(Pen_SeaBass[[1]]$Period)
-xyz.true <- subset(Pen_SeaBass[[1]], Period == fish.ids[1])[1:150,c(3:5,1)]
+xyz.true <- subset(Pen_SeaBass[[1]], Period == fish.ids[1])[1:100,c(3:5,1)]
 
 hydro.pos <- data.frame(x = c(11.15, 11.15, 3, 3),
                         y = c(11.15,3,11.15,3),
@@ -116,14 +115,15 @@ estimates.si <- TOA.localization(toa = toa.real,
 ```
 
 We'll mute the output from this code block... as we've set YAPS to be very verbose during its run so we can check out the optimization while its running.
-We've setup this function to first estimate the position using spehrical interpolation.
+We've setup this function to first estimate the position using spherical interpolation.
 These preliminatry results will then be used as starting values in the YAPS model to speed up the optimization.
 
 ```{r,results=F, message=F, warning=F}
 ## YAPS-Pelagic
-estimates.yaps.p <- yaps.pelagic(toa = toa.real, 
+require(tictoc)
+tic();estimates.yaps.p <- yaps.pelagic(toa = toa.real, 
                                  hydrophone.pos = hydro.pos,
-                                 c = c, max.iterations = 5000)
+                                 c = c, max.iterations = 5000);toc()
 ```
 
 Now we'll plot the results and compare the Spherical interpolation, which is a more conventional solution to localization.

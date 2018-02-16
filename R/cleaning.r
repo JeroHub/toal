@@ -73,13 +73,16 @@ TagFreq.detect <- function(detections, frequencies, n.tags, minGap, plot = F){
 #' @param frequencies A vector of pulse onset frequencies (Hz) to filter.
 #' @param sensitivity Bandwidth in radians around target frequency.
 #' @param plot Set to T to plot results with ggplot
+
 #' Increase this value, if you are missing detections due to the tag changing frequency over time.
 #'
+#' @return
 #' @export
 #'
 TagFreq.filter <- function(detections, frequencies,
                            sensitivity = 0.1,
                            plot = F){
+
   ## Add column for rads
   detections <- data.frame(seconds = detections,
                            rads = NA)
@@ -144,67 +147,99 @@ TagFreq.filter <- function(detections, frequencies,
 
 }
 
-#' Label detections according to pulse period
+#' Acoustic Tag Localization: Label tags
 #'
-#' @param data data.frame with columns `c("Tag", "Hydrophone", "Seconds")`.
+#' @param data data.frame returned from \code{read.HTI.RAT()}.
+#' @param start Start time in seconds for analysis.
+#' @param duration Duration in seconds for analysis.
+#' @param n.tags Number of tags to analyse with unique pulse onset frequencies.
+#' @param freq.range A vector holding the range of possible tag frequencies
+#' @param maxDistance The maximum distance the individual can be from the hydrophone (meters).
+#' This is used to calculate the filter bandwidth.
+#' @param sensitivity Bandwidth in radians around target frequency.
+#' Increase this value, if you are missing detections due to the tag changing frequency over time.
 #' @param plot Show ggplot graphics for error checking segments.
 #'
 #' @return
-#' @export
-TagFreq.label <- function(data, plot = F){
+#' @expor
+#'
+#' @examples
+atl.label <- function(data, start, duration, n.tags, maxDistance, sensitivity,
+                      freq.range = c(0.9,1.1), freq.resolution = 0.0001,
+                      plot = F, pulsePeriodDistance.idx = 10, time.shift.sensitivity = 3){
   ## Initialize results dataframe
   dataset <- data.frame()
 
-  ## Get tag frequencies
-  tag.freqs <- sort(unique(data$Tag))
+  for(i in 1:max(data$Hydrophone)){
+    ## Get first 10 seconds of hydrophone 1
+    data.raw.hy1.sub <- subset(x = data, Hydrophone == i & seconds > start &
+                                 seconds <= (start+duration))
 
-  # Loop different tag frequencies
-  for(j in tag.freqs){
+    if(nrow(data.raw.hy1.sub) < 2){return(NA)}
 
-    ## Make table for tag/hydrophone combination
-    temp <- subset(data, subset = Tag == j)
+    if (plot == T){
+      message('Hydrophone ',i)
+    }
 
-    ########################################
-    # Convert to normalized circular domain
-    ########################################
-    ## Calc pulse period
-    dt <- 1/tag.freqs[j]
-    ## Calculate raw periods
-    period <- (temp$seconds / dt)
-    ## Convert seconds to radians (relative to pulse period)
-    rads.raw.unwrapped <- temp$Seconds*pi*2/dt
-    rads.raw <- rads.raw.unwrapped %% (2*pi)
-    ## Calc correction for moving rads to period center
-    rads.center.const <- (-((circular.mean(rads.raw,
-                                           weight = NULL,
-                                           verbose = F)$theta + 2*pi) %%
-                              (2*pi)) + 3*pi) %% (2*pi)
-    ## Center rads around pi
-    rads.center <- (rads.raw + rads.center.const) %% (2*pi)
-    rads.center.unwrapped <- rads.raw.unwrapped + rads.center.const
-    ## Get periods (starting at 1 for relative periods)
-    period.abs <- floor(rads.center.unwrapped/(2*pi))
-    period.rel <- period.abs - min(period.abs) + 1
+    #########################################################
+    ## Use circular statistics to detect tag pulse periods
+    #########################################################
+    ### Calculate frequency r.bars
+    tag.freqs <- TagFreq.detect(detections = data.raw.hy1.sub$seconds,
+                                frequencies = as.vector(seq(
+                                  freq.range[1],freq.range[2],freq.resolution)),
+                                fs = fs,n.tags = n.tags,plot = plot,
+                                pulsePeriodDistance.idx = pulsePeriodDistance.idx)
+    tag.freqs <- sort(tag.freqs)
+    if(plot == T){
+      invisible(readline(prompt="Press [enter] to see next plot"))
+    }
+    ## Should be a distinct peak for each tag
 
-    # Save values
-    temp$period.start <- min(period.abs)*(dt) - ((rads.center.const/(2*pi))*dt)
-    temp$dt <- dt
-    temp$period <- as.integer(period.rel)
-    temp$rads <- rads.center
+    ##############################################
+    ## Filter out first tag frequency from data
+    ##############################################
+    tag.detections <- TagFreq.filter(detections = data.raw.hy1.sub$seconds,
+                                     frequencies = tag.freqs, fs = fs, plot = plot,
+                                     sensitivity = sensitivity,
+                                     time.shift.sensitivity = time.shift.sensitivity)
 
-    ## Append to results table
-    dataset <- rbind(dataset,temp)
-  }
+    if(plot == T){
+      invisible(readline(prompt="Press [enter] to see next plot"))
+    }
 
-  if(plot == T){
-    require(ggplot2)
-    print(
-      ggplot(dataset) +
-        geom_path(aes(x = Seconds, y = rads, group = factor(period))) +
-        geom_point(aes(x = Seconds, y = rads, color = factor(Hydrophone))) +
-        theme_bw() + scale_color_discrete(name = 'Hydrophone') +
-        ylab('Relative Detection Time (Radians per period)') + xlab('Absolute Detection time (Seconds)')
-    )
+    for(j in 1:length(tag.freqs)){
+
+      ## Make table for tag/hydrophone combination
+      temp <- cbind(Freq.id = j, Freq = tag.freqs[j],
+                    data.raw.hy1.sub[tag.detections[[j]],])
+
+      # Convert to normalized circular domain
+      ## Calc pulse period
+      dt <- 1/tag.freqs[j]
+      ## Calculate raw periods
+      period <- (temp$seconds / dt)
+      ## Convert seconds to radians (relative to pulse period)
+      rads.raw.unwrapped <- temp$seconds*pi*2/dt
+      rads.raw <- rads.raw.unwrapped %% (2*pi)
+      ## Calc correction for moving rads to period center
+      rads.center.const <- (-((circular.mean(rads.raw, verbose = F)$theta + 2*pi) %%
+                                (2*pi)) + 3*pi) %% (2*pi)
+      ## Center rads around pi
+      rads.center <- (rads.raw + rads.center.const) %% (2*pi)
+      rads.center.unwrapped <- rads.raw.unwrapped + rads.center.const
+      ## Get periods (starting at 0 for relative periods)
+      period.abs <- floor(rads.center.unwrapped/(2*pi))
+      period.rel <- period.abs - min(period.abs)
+
+      # Save values
+      temp$period.start <- min(period.abs)*(dt) - ((rads.center.const/(2*pi))*dt)
+      temp$period <- as.integer(period.rel)
+      temp$rads <- rads.center
+
+      ## Append to results table
+      dataset <- rbind(dataset,temp)
+    }
   }
 
   return(dataset)
