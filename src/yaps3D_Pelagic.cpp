@@ -32,7 +32,9 @@ Type objective_function<Type>::operator() ()
   // PARAMETER(logScale_toa);		// scale-parameter for t-dist
   // PARAMETER(log_t_part);		// t-part of mixture model
 
-  PARAMETER(logSigma_xyz);
+  PARAMETER(logSigma_x);
+  PARAMETER(logSigma_y);
+  PARAMETER(logSigma_z);
 
   /*****************************
   * Helper Variables
@@ -43,6 +45,8 @@ Type objective_function<Type>::operator() ()
   *****************************/
   array<Type> mu_toa(np,nh);  // Estimated toa
   array<Type> dist(np,nh);	 // dist-matrix
+  array<Type> disp(np-1,3); // displacement
+  array<Type> meanDisp(3); // mean displacement (over whole sample)
 
   // SD for hydrophone latency errors
   Type sigma_dl = exp(logSigma_dl);
@@ -58,8 +62,13 @@ Type objective_function<Type>::operator() ()
   // Type G_part = Type(1.0) - t_part;
 
   // Displacement
-  Type sigma_xyz = exp(logSigma_xyz);
+  Type sigma_x = exp(logSigma_x);
+  Type sigma_y = exp(logSigma_y);
+  Type sigma_z = exp(logSigma_z);
   Type velocity;
+  int j;
+  Type time;
+  Type n;
 
   /***************************************************
   * Start run
@@ -106,26 +115,36 @@ Type objective_function<Type>::operator() ()
   * Assumes a gamma error distribution of swim displacement
   * along each axis between pings.
   *************************************************/
+  meanDisp(0) = Type(0);meanDisp(1) = Type(0);meanDisp(2) = Type(0);
   for(int i=1; i<np; ++i){
-    // displacement liklihood
-    nll -= dnorm(XYZ(i,0), XYZ(i-1,0),
-                 sqrt(sigma_xyz*(top(i) - top(i-1))), true);
-    nll -= dnorm(XYZ(i,1), XYZ(i-1,1),
-                 sqrt(sigma_xyz*(top(i) - top(i-1))), true);
-    nll -= dnorm(XYZ(i,2), XYZ(i-1,2),
-                 sqrt(sigma_xyz*(top(i) - top(i-1))), true);
+    j = i - 1;
+    disp(j,0) = XYZ(i,0) - XYZ(j,0);
+    disp(j,1) = XYZ(i,1) - XYZ(j,1);
+    disp(j,2) = XYZ(i,2) - XYZ(j,2);
+  }
 
+  for(int i=1; i<np; ++i){
+    j = i - 1;
+    meanDisp(0) += disp(i-1,0);
+    meanDisp(1) += disp(i-1,1);
+    meanDisp(2) += disp(i-1,2);
+  }
 
-    // Take sqrt of dist to transfrom into a normal distribution
-    // The mean should be linearly related to the SD if x, y, and z displacement
-    // is normally distributed and centered around 0
-    // velocity = sqrt(
-    //   (XYZ(i,0) - XYZ(i-1,0))*(XYZ(i,0) - XYZ(i-1,0)) +
-    //     (XYZ(i,1) - XYZ(i-1,1))*(XYZ(i,1) - XYZ(i-1,1)) +
-    //     (XYZ(i,2) - XYZ(i-1,2))*(XYZ(i,2) - XYZ(i-1,2)))/
-    //       (top(i) - top(i-1));
-    //
-    // nll -= dnorm(sqrt(velocity), sigma_xyz*4.508148, sigma_xyz, true);
+  // Calc average diplacement over whole sample
+  meanDisp(0) = meanDisp(0)/(np-1);
+  meanDisp(1) = meanDisp(1)/(np-1);
+  meanDisp(2) = meanDisp(2)/(np-1);
+
+  for(int i=1; i<np; ++i){
+    // Displacement liklihood
+    j = i - 1;
+    time = (top(i) - top(j));
+    nll -= dnorm(disp(j,0), meanDisp(0),
+                 sqrt(sigma_x*time), true);
+    nll -= dnorm(disp(j,1), meanDisp(1),
+                 sqrt(sigma_y*time), true);
+    nll -= dnorm(disp(j,2), meanDisp(2),
+                 sqrt(sigma_z*time), true);
   }
 
   /*************************************************

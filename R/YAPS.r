@@ -83,7 +83,7 @@ yaps.pelagic <- function(toa, hydrophone.pos, c = 1500, max.iterations = 10000,
          xout = x, rule = 2)$y
 
   names(start.xyz) <- NULL
-  if (length(params) != 4){
+  if (length(params) != 6){
     message('Using default start parameters')
     params <- list(
       XYZ = as.matrix(start.xyz),
@@ -93,16 +93,12 @@ yaps.pelagic <- function(toa, hydrophone.pos, c = 1500, max.iterations = 10000,
                   ncol = data$nh),		# latency error
       #c  = c, # Speed of sound
       logSigma_bi = -7.4, #log transformed SD of pulse intervals
-
       # logSigma_dl = rep(-10,length = data$nh),		# Sigma for latency error
       logSigma_dl = -10,		# Sigma for latency error
-
-
       logSigma_toa = -15, # Time of arrival SD
-      # logScale_toa = -6,		# scale-parameter for t-dist
-      #
-      # log_t_part = -3,		# t-part of mixture model
-      logSigma_xyz = -3.5)
+      logSigma_x = -3.5,
+      logSigma_y = -3.5,
+      logSigma_z = -3.5)
   }else{
     message('Using user specified start parameters')
     params <- append(
