@@ -8,14 +8,17 @@
 #' YAPS: Pelagic fish
 #'
 #' @param toa $i \times h$ matrix or data.frame holding time-or-arrival data where $h$ is the number of hydrophones and $i$ is the number of pings.
-#' @param hydrophone.pos A $h \times 3$ matrix where columns are x, y, and z positions of hydrophones 1 thru h.
+#' @param hydrophone.pos A h x 3 matrix where columns are x, y, and z positions of hydrophones 1 thru h.
 #' @param c The approximate speed of sound in water.
 #'
 #' @return A table of estimated positions in 3D.
 #' @export
-yaps.pelagic <- function(toa, hydrophone.pos, c, max.iterations = 10000, xyz.start){
+yaps.pelagic <- function(toa, hydrophone.pos, c = 1500, max.iterations = 10000,
+                         params = NULL){
   require(zoo)
   require(TMB)
+
+
 
   ## Remove NAs
   toa.clean <- toa
@@ -25,7 +28,8 @@ yaps.pelagic <- function(toa, hydrophone.pos, c, max.iterations = 10000, xyz.sta
     H = as.matrix(hydrophone.pos),
     toa = as.matrix(toa.clean),
     nh = nrow(hydrophone.pos),
-    np = nrow(toa)
+    np = nrow(toa),
+    c = c
   )
 
   ## Interlop mising times
@@ -44,17 +48,15 @@ yaps.pelagic <- function(toa, hydrophone.pos, c, max.iterations = 10000, xyz.sta
                                 c = c)
   if(dim(hydrophone.pos)[1] == 4 ){
     ## If 4 hydrophones, select best equation
-    eq.neg <- apply(subset(start.xyz, subset = eq == '-')[2:4],
-                    MARGIN = 2, FUN = 'diff')
+    eq.neg <- apply(subset(start.xyz, subset = eq == '-')[2:4], MARGIN = 2, FUN = 'diff')
     eq.neg <- sum(abs(eq.neg),na.rm = T)
-    eq.pos <- apply(subset(start.xyz, subset = eq == '+')[2:4],
-                    MARGIN = 2, FUN = 'diff')
+    eq.pos <- apply(subset(start.xyz, subset = eq == '+')[2:4], MARGIN = 2, FUN = 'diff')
     eq.pos <- sum(abs(eq.pos),na.rm = T)
     ## Pick solutions with smallest travel distance
     if(eq.neg < eq.pos){
       start.xyz <- subset(start.xyz, subset = eq == '-')[2:4]
     }else{
-      start.xyz <- subset(start.xyz, subset = er == '+')[2:4]
+      start.xyz <- subset(start.xyz, subset = eq == '+')[2:4]
       }
   }else{ # 4 or more hydrophones
     start.xyz <- start.xyz[2:4]
@@ -81,25 +83,39 @@ yaps.pelagic <- function(toa, hydrophone.pos, c, max.iterations = 10000, xyz.sta
          xout = x, rule = 2)$y
 
   names(start.xyz) <- NULL
-  params <- list(
-    XYZ = as.matrix(start.xyz),
-    top = top.interp,	# Estimated random times of pings
-    dl = matrix(data = rnorm(n = data$np*data$nh, mean = 0,sd = 1),
-                nrow = data$np,
-                ncol = data$nh),		# latency error
-    c  = c, # Speed of sound
-    logSigma_bi = -3, #log transformed SD of pulse intervals
+  if (length(params) != 4){
+    message('Using default start parameters')
+    params <- list(
+      XYZ = as.matrix(start.xyz),
+      top = top.interp,	# Estimated random times of pings
+      dl = matrix(data = rnorm(n = data$np*data$nh, mean = 0,sd = -10),
+                  nrow = data$np,
+                  ncol = data$nh),		# latency error
+      #c  = c, # Speed of sound
+      logSigma_bi = -7.4, #log transformed SD of pulse intervals
 
-    logSigma_dl = rep(-3,length = data$nh),		# Sigma for latency error
+      # logSigma_dl = rep(-10,length = data$nh),		# Sigma for latency error
+      logSigma_dl = -10,		# Sigma for latency error
 
-    logD_xy = -2,    		# Log SD of XY movement/unit time
-    logD_z = -2,        # Log SD of Z movement/unit time
 
-    logSigma_toa = -8, # Time of arrival SD
-    logScale_toa = -3,		# scale-parameter for t-dist
+      logSigma_toa = -15, # Time of arrival SD
+      # logScale_toa = -6,		# scale-parameter for t-dist
+      #
+      # log_t_part = -3,		# t-part of mixture model
+      logSigma_xyz = -3.5)
+  }else{
+    message('Using user specified start parameters')
+    params <- append(
+      list(XYZ = as.matrix(start.xyz),
+           top = top.interp,	# Estimated random times of pings
+           dl = matrix(data = rnorm(n = data$np*data$nh, mean = 0,
+                                    sd = exp(params$logSigma_dl)),
+                       nrow = data$np,
+                       ncol = data$nh)#,		# latency error)
+         #  c = c
+           ),
+      params)} # User specificed start parameters
 
-    log_t_part = -3		# t-part of mixture model
-  )
 
   message('Running YAPS...')
   # Make optimization function
@@ -124,14 +140,6 @@ yaps.pelagic <- function(toa, hydrophone.pos, c, max.iterations = 10000, xyz.sta
   summ <- data.frame(param=param_names, sd=sds)
   plsd <- split(summ[,2], f=summ$param)
 
-  #Extract data
-  sd_xy <- matrix(plsd$XYZ, ncol=3)
-  dl <- as.data.frame(pl$dl)
-  names(dl) <- paste0('dl_H',1:data$nh)
-  yapsRes <- cbind(data.frame(x=pl$XYZ[,1], y=pl$XYZ[,2], z=pl$XYZ[,3],
-                        top=pl$top), dl)
 
-  attr(yapsRes, 'c') <- pl$c
-
-  return(yapsRes)
+  return(pl)
 }
