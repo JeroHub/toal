@@ -65,7 +65,7 @@ c.real <- rnorm(n = 1, mean = 1500,sd = 1)
 
 ## Get track time-or-arrival values for first fish
 fish.ids <- unique(Pen_SeaBass[[1]]$Period)
-xyz.true <- subset(Pen_SeaBass[[1]], Period == fish.ids[1])[1:100,c(3:5,1)]
+xyz.true <- subset(Pen_SeaBass[[1]], Period == fish.ids[1])[1:200,c(3:5,1)]
 
 hydro.pos <- data.frame(x = c(11.15, 11.15, 3, 3),
                         y = c(11.15,3,11.15,3),
@@ -76,8 +76,8 @@ toa.expected <- xyz2toa(hydrophone.positions = hydro.pos,
                c = c.real)
 
 ## Simulate soruces of error
-hydrophoneMovement.sd <- 0.03
-pingDetection <- 0.97
+hydrophoneMovement.sd <- 0.01
+pingDetection <- 1
 ggplot(data = data.frame(ms = rnorm(n = 10000,
                                     mean = 0,
                                     sd = hydrophoneMovement.sd)*100)) + 
@@ -118,12 +118,27 @@ We'll mute the output from this code block... as we've set YAPS to be very verbo
 We've setup this function to first estimate the position using spherical interpolation.
 These preliminatry results will then be used as starting values in the YAPS model to speed up the optimization.
 
+As this model is rather complex, its important to set realistic starting parameters (via the `param` function).
+Here, we've set some initial values which we know work with this dataset.
+This results in the model running quite fast.
+Ideally, you can initally test your model on a small subset of data to find the right parameters.
+
+Finally, make sure you have a large enough smaple size for YAPS's assumptions to be met.
+YAPS assumes that the mean displacement of this fish on the x, y, and z axis will be 0.
+This will be violated if the fish swims in only one direction over your sample period.
+
 ```{r,results=F, message=F, warning=F}
 ## YAPS-Pelagic
-require(tictoc)
-tic();estimates.yaps.p <- yaps.pelagic(toa = toa.real, 
+params <- list(
+  logSigma_bi = -7, #log transformed SD of pulse intervals
+  # logSigma_dl = rep(-10,length = nrow(hydro.pos)),		# Sigma for latency error
+  logSigma_dl = -10,		# Sigma for latency error
+  logSigma_toa = -15, # Time of arrival SD
+  logSigma_xyz = -3)
+
+estimates.yaps.p <- yaps.pelagic(toa = toa.real,
                                  hydrophone.pos = hydro.pos,
-                                 c = c, max.iterations = 5000);toc()
+                                 max.iterations = 5000, params = params)
 ```
 
 Now we'll plot the results and compare the Spherical interpolation, which is a more conventional solution to localization.
@@ -133,13 +148,13 @@ require(magrittr)
 
 ## Append positional data
 results <- rbind(as.matrix(estimates.si[estimates.si$eq == '+',2:4]),
-                 as.matrix(estimates.yaps.p[,1:3]),
+                 as.matrix(estimates.yaps.p$XYZ),
                  as.matrix(xyz.true[,1:3])) %>% 
   as.data.frame()
 
 ## Get results from all models in a long form data.frame for plotting
 results$Model <- c(rep('SI+', dim(estimates.si[estimates.si$eq == '+',])[1]),
-                   rep('YAPS.p', times = dim(estimates.yaps.p)[1]),
+                   rep('YAPS.p', times = dim(estimates.yaps.p$XYZ)[1]),
                    rep('True', times = dim(xyz.true)[1]))
 row.names(results) <- NULL
 head(results)
@@ -184,9 +199,6 @@ ggplot(data = results) +
                               'True' = 'green',
                               'YAPS.p' = 'blue')) +
   ggtitle('Vertical Plane')
-
-message('YAPS estimate c: ', attr(estimates.yaps.p, 'c'),
-        ', real c: ', c.real)
 ```
 
 YAPS seems to do a good job of filling in the missing detections (when less than 4 hydrophones recieve a signal).
@@ -196,10 +208,10 @@ Finally, lets look at the distribution of our error terms, hydrophone latency.
 
 ```{r}
 ggplot(data = rbind(
-  data.frame(Hydrophone = 1, ms = 1000*matrix(estimates.yaps.p$dl_H1, ncol = 1)),
-  data.frame(Hydrophone = 2, ms = 1000*matrix(estimates.yaps.p$dl_H2, ncol = 1)),
-  data.frame(Hydrophone = 3, ms = 1000*matrix(estimates.yaps.p$dl_H3, ncol = 1)),
-  data.frame(Hydrophone = 4, ms = 1000*matrix(estimates.yaps.p$dl_H4, ncol = 1)))) +
+  data.frame(Hydrophone = 1, ms = 1000*matrix(estimates.yaps.p$dl[,1], ncol = 1)),
+  data.frame(Hydrophone = 2, ms = 1000*matrix(estimates.yaps.p$dl[,1], ncol = 1)),
+  data.frame(Hydrophone = 3, ms = 1000*matrix(estimates.yaps.p$dl[,1], ncol = 1)),
+  data.frame(Hydrophone = 4, ms = 1000*matrix(estimates.yaps.p$dl[,1], ncol = 1)))) +
   geom_histogram(aes(x = ms), bins = 40) + 
   facet_wrap(facets = ~ factor(Hydrophone), ncol = 2) +
   ggtitle('Estimated Latency Error per Detection') +
