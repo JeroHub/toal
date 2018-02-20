@@ -44,7 +44,7 @@ These sources of error include:
 
 This flavor of YAPS is based on the following assumptions:
 
-- Displacement on x, y, and z axes have a mean of 0 and equal SDs on each axis.
+- Displacement on x, y, and z axes have a guassian distribution (does not have to be 0-centered).
 - Speed of sound through water is a constant, known value.
 - Hydrophone array arranged for 3D positioning (hydrophones are not positioned along a single 2D plane).
 - Fixed tag pulse interval.
