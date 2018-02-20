@@ -75,8 +75,8 @@ Type objective_function<Type>::operator() ()
   ***************************************************/
   // Negative log liklihood
   // Use the non-parallel intialization for debugging
-  // Type nll = 0;
-  parallel_accumulator<Type> nll(this);
+  Type nll = 0;
+  //parallel_accumulator<Type> nll(this);
 
   /*************************************************
   * Time of arrival
@@ -112,7 +112,7 @@ Type objective_function<Type>::operator() ()
 
   /*************************************************
   * Spatial location
-  * Assumes a gamma error distribution of swim displacement
+  * Assumes a mnrmal error distribution of swim displacement
   * along each axis between pings.
   *************************************************/
   meanDisp(0) = Type(0);meanDisp(1) = Type(0);meanDisp(2) = Type(0);
@@ -121,13 +121,10 @@ Type objective_function<Type>::operator() ()
     disp(j,0) = XYZ(i,0) - XYZ(j,0);
     disp(j,1) = XYZ(i,1) - XYZ(j,1);
     disp(j,2) = XYZ(i,2) - XYZ(j,2);
-  }
 
-  for(int i=1; i<np; ++i){
-    j = i - 1;
-    meanDisp(0) += disp(i-1,0);
-    meanDisp(1) += disp(i-1,1);
-    meanDisp(2) += disp(i-1,2);
+    meanDisp(0) += disp(j,0);
+    meanDisp(1) += disp(j,1);
+    meanDisp(2) += disp(j,2);
   }
 
   // Calc average diplacement over whole sample
