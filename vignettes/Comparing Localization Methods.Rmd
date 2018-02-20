@@ -26,9 +26,12 @@ We've adapted the proposed YAPS models for different situations, with a particul
 
 Some key differences between Baktoft's YAPS and the flavors of YAPS presented here is that we:
 
-- Assume a constant speed of sound throughout the sample period.
+- Assume a constant, known speed of sound throughout the sample period.
 - Assume hydrophones have errors due to guassian random movement in three-dimentions.
 - Works only on 3D positioning (as opposed to only on 2D).
+- Unique dispersion parameter for each axis instead of a single shared parameter for all axes.
+- The distribution of displacement values is not 0 centered.  The mean dispersion is calculate on each iteration to account for setups where the fish only swims in a single direction.
+- The time-of-arrival estimate residuals are Gaussian distributed rather than a mixed t and Gaussian distribution.
 
 While the extra assumptions of the YAPS model helps with position estimate robustness, if these assumptions are not clearly met there is a risk of misleading results.
 Here we'll walk through some examples testing our YAPS flavors on "simulated data".
@@ -41,13 +44,6 @@ These sources of error include:
 - Sample rate limitations from reciever setup
 
 ### YAPS Continual Swimming
-
-This flavor of YAPS is based on the following assumptions:
-
-- Displacement on x, y, and z axes have a mean of 0 and equal SDs on each axis.
-- Speed of sound through water is a constant, known value.
-- Hydrophone array arranged for 3D positioning (hydrophones are not positioned along a single 2D plane).
-- Fixed tag pulse interval.
 
 To test this out we'll use some previously collected data on sea bass.
 We'll use a simulated hydrophone array with a shallow depth to exaggerate potential error along z axis positions.
@@ -103,10 +99,6 @@ ggplot(data = as.data.frame(rbind(
 ```
 
 Now we have our dataset, we'll apply YAPS and compare its results to that of spherical interpolation.
-To make sure things don't take too long, we'll restrict YAPS to 2000 iterations.
-We'll also try one with 5000 to see if that gives a noticable improvement.
-More iterations should result in potentially more accurate results.
-We'll also time how long each method takes.
 
 ```{r, warning=F}
 ## Spherical interopolation
@@ -124,9 +116,7 @@ Here, we've set some initial values which we know work with this dataset.
 This results in the model running quite fast.
 Ideally, you can initally test your model on a small subset of data to find the right parameters.
 
-Finally, make sure you have a large enough smaple size for YAPS's assumptions to be met.
-YAPS assumes that the mean displacement of this fish on the x, y, and z axis will be 0.
-This will be violated if the fish swims in only one direction over your sample period.
+Finally, make sure you have a large enough smaple size for YAPS's assumptions to be met (i.e. esimtation of error distributions).
 
 ```{r,results=F, message=F, warning=F}
 ## YAPS-Pelagic
@@ -222,10 +212,6 @@ ggplot(data = rbind(
   xlab('Milliseconds') + theme_bw()
 ```
 
-The hydrophone latency is an issue here.
-As seen here, 1 hydrophone typically collects all the latency error (which should be distributed evenly accross all 4 hydrophones.
-Despite this, I'll keep this random effect, as in its absence, I'm guessing the locations will end up trying to compensate for this error and result in more variable resulting paths.
-A next step would be to simulate this latency error using sin waves (to replicate surface waves), resulting in a more realistic form of this latency error.
 
 ## References
 
