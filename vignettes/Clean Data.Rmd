@@ -16,15 +16,16 @@ In this example, each individual is marked by the unique pulse rate interval on 
 We'll use a HTI dataset which has been loaded and saved as an example dataset for this package.
 
 First, we'll figure out what the pulse rate intervals of from our tags.
+For this, we only need data from one of the hydrophones.
 
 ```{r}
+require(toal)
 ## Load dataset
 # Only load hydrophone 1, and all detections within first minute
-dataset <- dataset_HTI
-dataset.H1 <- subset(dataset, Hydrophone == 1 & seconds < 60)
+dataset <- subset(dataset_HTI, seconds < 60 & seconds > 0)
+dataset.H1 <- subset(dataset, Hydrophone == 1)
 
 ## Find unique pulse rate intervals
-?TagFreq.detect
 pulseIntervals <- TagFreq.detect(dataset.H1$seconds,n.tags = 4,plot = T,
                      frequencies = seq(0.9,1.1,0.001), minGap = 0.0001)
 ```
@@ -38,8 +39,9 @@ pulseFrequencies <- TagFreq.detect(dataset.H1$seconds,n.tags = 4,plot = T,
                      frequencies = seq(0.95,1.05,0.0001), minGap = 0.0001)
 ```
 
-This plot looks good, although we're detecting multiple peaks in the same frequency.
+This plot looks good, although we're detecting multiple peaks in the same small regions.
 You can adjust the `minGap` parameter to filter out the effects of clustered peaks.
+Also, notice how we're fine-tuning the `frequencies` range upon each iteration.
 
 ```{r}
 pulseFrequencies <- TagFreq.detect(dataset.H1$seconds, n.tags = 4, plot = T,
@@ -51,20 +53,35 @@ pulseFrequencies
 Now we see 4 clearly defined peaks, so we'll keep these as our unique identifiers for our individuals.
 
 Next, we'll use the filter functions to correlate each pulse detection with the correct individual based on their tag pulse frequency.
+We'll just work with data from the first tagged individual here.
 In the plot below, red indicates detections that will be assigned to the individual.
 You can use the `sensitivity` (radians) parameter to adjust your filter bandwidth.  
 
 ```{r}
-require(toal)
-?TagFreq.filter
-tag.filter.idx <- TagFreq.filter(detections = dataset.H1$seconds,
-                     frequencies = pulseFrequencies, sensitivity = 0.1, plot = T)
+hydro <- unique(dataset$Hydrophone)
 
-dataset.H1.Tag1 <- dataset.H1$seconds[tag.filter.idx[[1]]]
+# Initialize new dataframe for results
+dataset.tag1 <- data.frame()
+for(i in hydro){
+  dataset.sub <- subset(dataset, subset = Hydrophone == i)
+  tag.filter.idx <- TagFreq.filter(detections = dataset.sub$seconds,
+                                   frequencies = pulseFrequencies[1],
+                                   sensitivity = 0.1, plot = T)
+  dataset.tag1 <- rbind(dataset.tag1,
+                        data.frame(Tag = pulseFrequencies[1],
+                                   Hydrophone = i,
+                                   Seconds = dataset$seconds[tag.filter.idx[[1]]]))
+}
+head(dataset.tag1)
 ```
 
-Now we've isolated the detections of individual 1 on reciever hydrphone 1, we can filter out the reflections.
+The next step is to mark each tag according to its pulse period.
 
 ```{r}
-
+dataset.periods <- TagFreq.label(data = dataset.tag1, plot = T)
 ```
+
+We can look at the resulting plot to proof our data.
+The lines connect detections in the same period, while the actual detection times are plotted along the x-axis, and the relative detection times on the y.
+the data is broken up into periods, where each period is the length of 1/(tag pulse period frequency).
+The relative detection time refers to the position of a detection within a pulse period, which is given in radians as this is a polar measure.
