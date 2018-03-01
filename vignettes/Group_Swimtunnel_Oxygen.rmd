@@ -1,0 +1,114 @@
+---
+title: "Group_Swimtunnel_Oxygen"
+author: "James Campbell"
+date: "March 1, 2018"
+output: html_document
+---
+
+Load and format data
+
+```{r}
+oxygen.df <- read.csv('~/Dropbox/PCAD4Cod/SwimTunnel/2018-02-28-SwimTunnel_O2.csv')
+## Convert times to POSIX
+oxygen.df$Time <- as.POSIXct(oxygen.df$Time, format = "%I:%M:%S %p")
+
+
+## Manually enter the maximum number of O2 measures per trial
+maxMeasuresPerTrial <- 7
+
+## Calc O2 conumption rates/second
+Trials <- unique(oxygen.df$Trial)
+Groups <- unique(oxygen.df$Group)
+Speeds <- unique(oxygen.df$Speed)
+Measures <- 1:(maxMeasuresPerTrial-1) 
+
+## Initialize empty arrays
+oxygen.ary <- array(data = NA, dim = c(length(Trials), length(Groups), length(Speeds),length(Measures)))
+temperature.ary <- array(data = NA, dim = c(length(Trials), length(Groups), length(Speeds),length(Measures)))
+time.ary <- array(data = NA, dim = c(length(Trials), length(Groups), length(Speeds),length(Measures)))
+
+for(trial in 1:length(Trials)){
+  for(group in 1:length(Groups)){
+    for(speed in 1:length(Speeds)){
+      oxygen.df.sub <- subset(oxygen.df, subset = 
+                                Trial == Trials[trial] &
+                                Group == Groups[group] &
+                                Speed == Speeds[speed])
+      
+      if(nrow(oxygen.df.sub)>2){
+        
+        ## Oxygen consumption per minute
+        oxygenConsume <- diff(oxygen.df.sub$Oxygen)/diff(as.numeric(oxygen.df.sub$Time))
+        n <- length(oxygenConsume)
+  
+        ## Measurement time
+        seconds <- as.numeric(oxygen.df.sub$Time)
+        MeasureTime <- seconds[2:length(seconds)] - seconds[1]
+  
+        ## Average Temperature (from start and end temperature measures per sample period)
+        temp <- apply(X = cbind(oxygen.df.sub$Temperature[1:n],
+                                oxygen.df.sub$Temperature[2:(n+1)]),
+                      FUN = 'mean', MARGIN = 1)
+        
+        ## Save results in arrays
+        oxygen.ary[trial,group,speed,1:n] <- oxygenConsume
+        temperature.ary[trial,group,speed,1:n] <- temp[1:n]
+        time.ary[trial,group,speed,1:n] <- MeasureTime
+      }
+    }
+  }
+}
+
+# Convert NAs to -999
+oxygen.ary[is.na(oxygen.ary)] <- -999
+temperature.ary[is.na(temperature.ary)] <- -999
+time.ary[is.na(time.ary)] <- -999
+
+
+## Compare origional data to new arrays
+subset(oxygen.df, subset = 
+         Trial == Trials[1] &
+         Group == Groups[1] &
+         Speed == Speeds[1])
+      
+cbind(O2 = oxygen.ary[1,1,1,],
+      temp = temperature.ary[1,1,1,],
+      seconds =  time.ary[1,1,1,])
+
+ID <- read.csv('~/Dropbox/PCAD4Cod/SwimTunnel/2018-02-28-SwimTunnel_Individuals.csv')
+head(ID)
+
+Individuals <- unique(ID$ID)
+
+for(trial in 1:length(Trials)){
+  for(group in 1:length(Groups)){
+    
+    ID.df.sub <- subset(oxygen.df, subset = 
+                          Trial == Trials[trial] &
+                          Group == Groups[group])
+  
+      if(nrow(oxygen.df.sub)>2){
+        
+        ## Oxygen consumption per minute
+        oxygenConsume <- diff(oxygen.df.sub$Oxygen)/diff(as.numeric(oxygen.df.sub$Time))
+        n <- length(oxygenConsume)
+  
+        ## Measurement time
+        seconds <- as.numeric(oxygen.df.sub$Time)
+        MeasureTime <- seconds[2:length(seconds)] - seconds[1]
+  
+        ## Average Temperature (from start and end temperature measures per sample period)
+        temp <- apply(X = cbind(oxygen.df.sub$Temperature[1:n],
+                                oxygen.df.sub$Temperature[2:(n+1)]),
+                      FUN = 'mean', MARGIN = 1)
+        
+        ## Save results in arrays
+        oxygen.ary[trial,group,speed,1:n] <- oxygenConsume
+        temperature.ary[trial,group,speed,1:n] <- temp[1:n]
+        time.ary[trial,group,speed,1:n] <- MeasureTime
+      }
+    }
+  }
+}
+
+```

@@ -203,9 +203,9 @@ Finally, lets look at the distribution of our error terms, hydrophone latency.
 ```{r}
 ggplot(data = rbind(
   data.frame(Hydrophone = 1, ms = 1000*matrix(estimates.yaps.p$dl[,1], ncol = 1)),
-  data.frame(Hydrophone = 2, ms = 1000*matrix(estimates.yaps.p$dl[,1], ncol = 1)),
-  data.frame(Hydrophone = 3, ms = 1000*matrix(estimates.yaps.p$dl[,1], ncol = 1)),
-  data.frame(Hydrophone = 4, ms = 1000*matrix(estimates.yaps.p$dl[,1], ncol = 1)))) +
+  data.frame(Hydrophone = 2, ms = 1000*matrix(estimates.yaps.p$dl[,2], ncol = 1)),
+  data.frame(Hydrophone = 3, ms = 1000*matrix(estimates.yaps.p$dl[,3], ncol = 1)),
+  data.frame(Hydrophone = 4, ms = 1000*matrix(estimates.yaps.p$dl[,4], ncol = 1)))) +
   geom_histogram(aes(x = ms), bins = 40) + 
   facet_wrap(facets = ~ factor(Hydrophone), ncol = 2) +
   ggtitle('Estimated Latency Error per Detection') +
