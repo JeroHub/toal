@@ -50,7 +50,7 @@ read.HTI.RAT <- function(file,fs){
         data.raw[j,] <- as.integer(line.vector)
         j <- j + 1
       }
-    }else if(length(grep(pattern = 'Start Processing',x = line,fixed = T)) > 0){
+    }else if(length(grep(pattern = 'Start',x = line,fixed = T)) > 0){
       # When start prcessing is read, start reading table values
       readtable <- T
     }
