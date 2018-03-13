@@ -129,6 +129,8 @@ TagFreq.filter <- function(detections, frequencies,
   }
 
   if (plot == T){
+    ggtitle.TagFreq <- paste("Frequency Filtering | hydrophone",
+                            mean(dataset.sub$Hydrophone), sep = " ")
     print(
       ggplot(results.plot) +
         geom_point(aes(x = seconds, y = rads, color = factor(Detected)),
@@ -137,7 +139,7 @@ TagFreq.filter <- function(detections, frequencies,
         facet_wrap(~factor(Freq), ncol = 2) +
         scale_color_manual(values = c('black','red')) +
         guides(color = F) + ylab('Radians') + xlab('Seconds') +
-        ggtitle('Frequency Filtering'))
+        ggtitle(ggtitle.TagFreq))
   }
 
   return(results)
