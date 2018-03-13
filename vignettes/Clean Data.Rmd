@@ -22,7 +22,8 @@ For this, we only need data from one of the hydrophones.
 require(toal)
 ## Load dataset
 # Only load hydrophone 1, and all detections within first minute
-dataset <- subset(dataset_HTI, seconds < 60 & seconds > 0)
+start <- min(dataset_HTI$seconds)
+dataset <- subset(dataset_HTI, seconds <= start+60 & seconds >= start)
 dataset.H1 <- subset(dataset, Hydrophone == 1)
 
 ## Find unique pulse rate intervals
