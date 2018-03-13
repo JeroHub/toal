@@ -75,6 +75,7 @@ read.HTI.RAT <- function(file,fs){
   ## Trim final datasize (remove empty buffer space at end of table)
   data.raw <- data.raw[1:j,]
   data.raw$seconds <- data.raw$Sample/fs
+  data.raw <- data.raw[!(data.raw$Sample==0 & data.raw$Peak_Amplitude==0),]
   return(data.raw)
 }
 
