@@ -87,3 +87,28 @@ We can look at the resulting plot to proof our data.
 The lines connect detections in the same period, while the actual detection times are plotted along the x-axis, and the relative detection times on the y.
 the data is broken up into periods, where each period is the length of 1/(tag pulse period frequency).
 The relative detection time refers to the position of a detection within a pulse period, which is given in radians as this is a polar measure.
+
+It might be that the tag signals reflected and therefore were detected multiple times. For reflections, one can assume that the original signal arrives before the reflected signals. A way to aquire the first detections per period is as follows:
+
+```{r}
+Period <- min(dataset.periods$period)
+
+#loop
+for (Period in min(dataset.periods$period):max(dataset.periods$period)) {
+DateTime <- mean(dataset.periods$DateTime[dataset.periods$period == Period])
+H1 <- min(dataset.periods$Seconds[dataset.periods$Hydrophone == 1 & dataset.periods$period == Period])
+H2 <- min(dataset.periods$Seconds[dataset.periods$Hydrophone == 2 & dataset.periods$period == Period])
+H3 <- min(dataset.periods$Seconds[dataset.periods$Hydrophone == 3 & dataset.periods$period == Period])
+H4 <- min(dataset.periods$Seconds[dataset.periods$Hydrophone == 4 & dataset.periods$period == Period])
+dataset.YAPS_input.temp <- data.frame(Period, DateTime, H1, H2, H3, H4)
+
+if(exists('dataset.YAPS_input') && is.data.frame(get('dataset.YAPS_input'))){
+  dataset.YAPS_input <- rbind(dataset.YAPS_input, dataset.YAPS_input.temp)
+}else{
+  dataset.YAPS_input <- dataset.YAPS_input.temp
+}
+Period <- Period + 1
+}
+
+head(dataset.YAPS_input)
+```
