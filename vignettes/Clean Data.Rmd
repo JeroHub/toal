@@ -71,7 +71,8 @@ for(i in hydro){
   dataset.tag1 <- rbind(dataset.tag1,
                         data.frame(Tag = pulseFrequencies[1],
                                    Hydrophone = i,
-                                   Seconds = dataset.sub$seconds[tag.filter.idx[[1]]]))
+                                   Seconds = dataset.sub$seconds[tag.filter.idx[[1]]],
+                                   DateTime = dataset.sub$DateTime[tag.filter.idx[[1]]]))
 }
 head(dataset.tag1)
 ```
