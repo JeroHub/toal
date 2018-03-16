@@ -115,7 +115,9 @@ Type objective_function<Type>::operator() ()
   * Assumes a mnrmal error distribution of swim displacement
   * along each axis between pings.
   *************************************************/
-  meanDisp(0) = Type(0);meanDisp(1) = Type(0);meanDisp(2) = Type(0);
+
+// Calculate mean displacement for each run (Takes a REALLY long time)
+/*  meanDisp(0) = Type(0);meanDisp(1) = Type(0);meanDisp(2) = Type(0);
   for(int i=1; i<np; ++i){
     j = i - 1;
     disp(j,0) = XYZ(i,0) - XYZ(j,0);
@@ -143,7 +145,21 @@ Type objective_function<Type>::operator() ()
     nll -= dnorm(disp(j,2), meanDisp(2),
                  sqrt(sigma_z*time), true);
   }
-
+*/
+  
+  // Assume mean displacemnt of 0
+  for(int i=1; i<np; ++i){
+    // Displacement liklihood
+    j = i - 1;
+    time = (top(i) - top(j));
+    nll -= dnorm(disp(j,0), Type(0),
+                 sqrt(sigma_x*time), true);
+    nll -= dnorm(disp(j,1), Type(0),
+                 sqrt(sigma_y*time), true);
+    nll -= dnorm(disp(j,2), Type(0),
+                 sqrt(sigma_z*time), true);
+  }
+  
   /*************************************************
    * Hydrophone detection latency (+/-)
    * Caused by: sample rate limitations and
