@@ -35,10 +35,6 @@ yaps.pelagic <- function(toa, hydrophone.pos, c = 1500, max.iterations = 10000,
   ## Interlop mising times
   top.interp <- spline(x = 1:data$np, y = toa[,4], xout = 1:data$np)[[2]]
 
-  TOA.localization(toa = toa.real,
-                   hydrohpone.positions = Pen_SeaBass[[2]][,2:4],
-                   c = c)
-
   ###########################
   ## calc start positions
   ###########################
