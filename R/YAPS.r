@@ -14,7 +14,7 @@
 #' @return A table of estimated positions in 3D.
 #' @export
 yaps.pelagic <- function(toa, hydrophone.pos, c = 1500, max.iterations = 10000,
-                         params = NULL){
+                         params = NULL, verbose = F){
   require(zoo)
   require(TMB)
 
@@ -116,7 +116,7 @@ yaps.pelagic <- function(toa, hydrophone.pos, c = 1500, max.iterations = 10000,
                    random = c('XYZ', 'top', 'dl'),
                    DLL="yaps3D_Pelagic", # Position, speed of sound, time of pings
                    inner.control = list(maxit = max.iterations),
-                   silent=F, checkParameterOrder = T)
+                   silent=!verbose, checkParameterOrder = T)
   # Run model
   ## use iterative methods to find optimal parameters
   opt <- nlminb(start = unlist(params[4:length(params)]),

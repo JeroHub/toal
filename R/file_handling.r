@@ -54,14 +54,14 @@ read.HTI.RAT <- function(file,fs){
       # When start prcessing is read, start reading table values
       readtable <- T
       # Get date and time on which the logging started
-      StartDate <- paste(substring(line, regexpr("at", line) + 11, regexpr("at", line) + 12), 
-                         substring(line, regexpr("at", line) + 7, regexpr("at", line) + 9), 
+      StartDate <- paste(substring(line, regexpr("at", line) + 11, regexpr("at", line) + 12),
+                         substring(line, regexpr("at", line) + 7, regexpr("at", line) + 9),
                          substring(line, regexpr("at", line) + 23, regexpr("at", line) + 26), sep = "/")
-      
+
       lct <- Sys.getlocale("LC_TIME"); Sys.setlocale("LC_TIME", "C")
       StartDate <- as.Date(StartDate, "%d/%b/%Y")
       Sys.setlocale("LC_TIME", lct)
-      
+
       StartTime <- substring(line, regexpr("at", line) + 14, regexpr("at", line) + 21)
       StartDateTime <- as.POSIXct(paste(StartDate, StartTime, sep = " "))
     }
@@ -88,15 +88,9 @@ read.HTI.RAT <- function(file,fs){
   data.raw$seconds <- data.raw$Sample/fs
   data.raw <- data.raw[!(data.raw$Sample==0 & data.raw$Peak_Amplitude==0),]
   # Ascribing a date and time to each detection
-  data.raw$DateTime <- StartDateTime
   StartSeconds <- min(data.raw$seconds)
-  data.raw$seconds_since_start <- data.raw$seconds - StartSeconds
-  data.raw$DateTime <- data.raw$DateTime + data.raw$seconds_since_start
-  data.raw$seconds_since_start <- NULL
-  cat('For data.raw$DateTime it\'s assumed that signals are detected continuously, 
-      i.e. a first signal within a second after starting logging. If not; 
-      ignore or correct for this column\n')
-  
+  attr(x = data.raw, which = 'StartTime') <- as.character(StartDateTime)
+
   return(data.raw)
 }
 
