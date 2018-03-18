@@ -105,7 +105,7 @@ TOA.localization <- function(toa, hydrohpone.positions, c = 1500){
       R_s <- sqrt(sum(temp^2)) # Distance of origin from source
       error.temp <- delta - 2*(R_s*d) - 2*(S %*% temp)
       error <- sqrt(sum(error.temp^2)) # sum of squared error
-      estimates[i,] <- data.frame(id = 1, t(temp), error = error, eq = NA, stringsAsFactors = F)
+      estimates[i,] <- data.frame(id = i, t(temp), error = error, eq = NA, stringsAsFactors = F)
     }else{
       #### Use normal form of localization (only works for 4 sensors)
       a <- 4 - 4*(t(d) %*% t(solve(S)) %*% solve(S) %*% d)
@@ -134,4 +134,45 @@ TOA.localization <- function(toa, hydrohpone.positions, c = 1500){
   positions.real <- do.call(what = 'rbind',args = positions.real)
   estimates[,2:4] <- positions.real
   return(estimates)
+}
+
+#' Find speed of sound from hydrophone array
+#'
+#' By minimizing error within the sheprical interpolation time-of-arrival-localization results and assuming the provided hydrophone positions are correct, this function will estimate the true speed of sound in your setup.
+#' This is usefull for validating the speed of sound before processing with YAPS.
+#'
+#' @param c Your starting value for estimating the speed of sound.  Defaults to 1500m/s
+#' @param sensorLocations A `n` x `3` array holding the xyz coordinates of the `n` hydrophones used in the setup.
+#' @param detections A `source` x `hydrophone` array the detection times in seconds of the acoustic source.
+#'
+#' @return The estimated true speed of sound in m/s
+#' @export
+#'
+findc <- function(c = 1500, sensorLocations, detections){
+  message('Estimating speed of sound from TOA data...')
+
+  ## Generate otimization function
+  optFun <- function(c){
+    loc <- TOA.localization(toa = detections,
+                            hydrohpone.positions = sensorLocations,
+                            c = c)
+    if(nrow(sensorLocations) <= 4){
+      idx.1 <- which(loc$eq == '-')
+      idx.2 <- which(loc$eq == '+')
+      if(sum(diff(loc$x[idx.1])^2 + diff(loc$y[idx.1])^2 + diff(loc$z[idx.1])^2) <
+        sum(diff(loc$x[idx.2])^2 + diff(loc$y[idx.2])^2 + diff(loc$z[idx.2])^2)){
+          return(sum(loc$error[idx.1]^2))
+        }else{
+          return(sum(loc$error[idx.2]^2))
+        }
+    }else{
+      # Return sum of squared errors
+      return(sum(loc$error^2))
+    }
+  }
+
+  ## Run proccedure and return estimate
+  vals <- optim(par = c, fn = optFun, method = 'Brent',
+                lower = 1400, upper = 1600)
+  return(vals)
 }

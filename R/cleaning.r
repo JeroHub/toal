@@ -150,10 +150,12 @@ TagFreq.filter <- function(detections, frequencies,
 #'
 #' @param data data.frame with columns `c("Tag", "Hydrophone", "Seconds")`.
 #' @param plot Show ggplot graphics for error checking segments.
+#' @param sensitivity An optional value in radians for plotting the sensitivity bandwidth in the resulting ggplot.
+#' This is just a approximate visual aid for selecting filter sensitivities for the `Freq.filter` function and should not be interpreted as exact.
 #'
 #' @return
 #' @export
-TagFreq.label <- function(data, plot = F){
+TagFreq.label <- function(data, plot = F, sensitivity = NA){
   ## Initialize results dataframe
   dataset <- data.frame()
 
@@ -205,7 +207,10 @@ TagFreq.label <- function(data, plot = F){
         geom_path(aes(x = Seconds, y = rads, group = factor(period))) +
         geom_point(aes(x = Seconds, y = rads, color = factor(Hydrophone))) +
         theme_bw() + scale_color_discrete(name = 'Hydrophone') +
-        ylab('Relative Detection Time (Radians per period)') + xlab('Absolute Detection time (Seconds)')
+        ylab('Relative Detection Time (Radians per period)') +
+        xlab('Absolute Detection time (Seconds)') +
+        geom_hline(yintercept = c(pi + sensitivity/2, pi - sensitivity/2),
+                   linetype = 2)
     )
   }
 

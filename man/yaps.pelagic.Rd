@@ -4,12 +4,13 @@
 \alias{yaps.pelagic}
 \title{YAPS: Pelagic fish}
 \usage{
-yaps.pelagic(toa, hydrophone.pos, c)
+yaps.pelagic(toa, hydrophone.pos, c = 1500, max.iterations = 10000,
+  params = NULL, verbose = F)
 }
 \arguments{
 \item{toa}{$i \times h$ matrix or data.frame holding time-or-arrival data where $h$ is the number of hydrophones and $i$ is the number of pings.}
 
-\item{hydrophone.pos}{A $h \times 3$ matrix where columns are x, y, and z positions of hydrophones 1 thru h.}
+\item{hydrophone.pos}{A h x 3 matrix where columns are x, y, and z positions of hydrophones 1 thru h.}
 
 \item{c}{The approximate speed of sound in water.}
 }

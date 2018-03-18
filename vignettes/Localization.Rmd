@@ -1,5 +1,5 @@
 ---
-title: "Localization_example"
+title: "TOAL: Spherical Interpolation"
 author: "James Campbell"
 date: "`r Sys.Date()`"
 output: rmarkdown::html_vignette
@@ -28,7 +28,7 @@ sensorLocations <- data.frame(x = c(0, 0, 10, 10, 5),
 
 
 ## Create 5 random source locations within array
-n <- 5 # point sources to simulate
+n <- 15 # point sources to simulate
 sourceLocation <- data.frame(x = runif(n = n,min = 0, max = 10), 
                              y = runif(n = n,min = 0, max = 10), 
                              z = runif(n = n,min = 0, max = 5))
@@ -70,6 +70,20 @@ ggplot(sensorLocations) +
   theme_bw() + coord_equal() +
   scale_size_continuous(name = 'Depth',trans = 'reverse') + 
   ggtitle('Simulated Sensor array and sound sources')
+```
+
+### Estimating locations
+
+Before we run the extimate our spatial positions, we should consider that we may not know the exact speed of sound in a real dataset.
+We can deal with this by using R's optimization functions to reduce the resultin error from our TOALs.
+We've written a function to automate this, but the gist is that spherical interpolation is a very computationally efficient proceedure which also returns error values (spherical interpolation is essentially a closed-form solution to minimizing error already).
+By letting R test different speeds of sound, we can let R choose the most likely values for us.
+This is handy for addressing measurement or placement errors in your setup, and also a simple method for estimating the speed of sound from your setup without using any additional measurements (like salinity, temperature, etc).
+
+Below, we'll type in an incorrect `c`, and the `findc` function will correct us, returning the true speed of sound.
+
+```{r}
+findc(sensorLocations = sensorLocations,detections = sensorLatency, c = 1600)
 ```
 
 To localize the sound soruces, we need the time-of-arrival and hydrophone location data, seen here in `sourceLocation` and `sensorLatency`.
