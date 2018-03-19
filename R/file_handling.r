@@ -106,7 +106,7 @@ read.HTI.RAT <- function(file,fs){
 #' @export
 #'
 #' @examples
-HIT.meta <- function(folder){
+HTI.meta <- function(folder){
   require(R.utils)
 
   #folder <- '/mnt/Backup/DaysAgo.0/Jacobahaven_2017/Experiment_2017_FloatingPen/HTI'

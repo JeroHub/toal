@@ -217,6 +217,91 @@ TagFreq.label <- function(data, plot = F, sensitivity = NA){
   return(dataset)
 }
 
+#' Clean outliers from TOA dataset
+#'
+#' @param detection.periods A data.frame returned from `TagFreq.label`.
+#' @param z The degree of filtering as defined by the guassian z-score.
+#' @param plot Set to T to show results of cleaning.
+#'
+#' @return
+#' @export
+#'
+TagFreq.clean <- function(detections, z = 1.96, plot = T){
+  ## Remove erronious points
+  dataset.periods.clean <- data.frame()
+  for(tag in unique(detections$Tag)){
+    for(hydro in unique(detections$Hydrophone)){
+      # Subset data
+      data.sub <- subset(detections,
+                         subset = Tag == tag & Hydrophone == hydro)
+      period.start <- data.sub$period.start[1]
+
+      # Select first detection for each period
+      data.sub.2 <- aggregate(Seconds ~ period, data = data.sub, FUN = 'min')
+      data.sub.2$rads <- ((data.sub.2$Seconds - period.start)*2*pi /
+                            (1/tag)) %% (2*pi)
+      # Repopulate columns
+      data.sub.2$Tag <- tag
+      data.sub.2$Hydrophone <- hydro
+      data.sub.2$period.start <- period.start
+      data.sub.2$dt <- 1/tag
+
+      ## Remove outliers
+      # Calculate guassian distribution of delta radians
+      # Delta radians = delta from both sides of point
+      # Remove all points outside 0.95 percentile of guassian distribution
+      # Repeat until all points are within range
+      data.sub.3 <- data.sub.2
+      loop <- T
+      z <- 1.96
+      while(loop == T){
+        v <- c(diff(data.sub.3$rads), 0) -
+          c(0, diff(data.sub.3$rads))
+        p <- c(diff(data.sub.3$period), 0) +
+          c(0, diff(data.sub.3$period))
+        av <- v/p
+        mean <- mean(av); sd <- sd(av)
+        x <- seq(min(av), max(av), 0.0001)
+        guassian <- dnorm(x = x, mean = mean, sd = sd)
+        idx <- which(av < mean - z*sd | av > mean + z*sd)
+        data.sub.3$kill <- F
+        data.sub.3$kill[idx] <- T
+        ggplot(data.sub.3) +
+          geom_line(aes(x = period, y = rads)) +
+          geom_point(aes(x = period, y = rads,
+                         color = kill,fill = av), pch = 21) +
+          scale_fill_distiller(type = 'div') +
+          scale_color_manual(values = c('black', 'red'))
+
+        if(length(idx) > 0){
+          data.sub.3 <- data.sub.3[-idx,]
+        }else{
+          loop <- F
+        }
+        ggplot() + geom_density(aes(x = av)) +
+          geom_line(aes( x = x, y = guassian))
+      }
+      idx <- as.numeric(row.names(data.sub.3))
+      data.sub.2$remove <- T
+      data.sub.2$remove[idx] <- F
+      dataset.periods.clean <- rbind(dataset.periods.clean, data.sub.2)
+    }
+  }
+
+  if (plot == T){
+    require(ggplot2)
+    print(
+      ggplot(dataset.periods.clean) +
+        geom_line(aes(x = period, y = rads, group = Hydrophone)) +
+        geom_point(aes(x = period, y = rads, color = remove, group = Hydrophone)) +
+        scale_color_manual(values = c('green', 'red')) + theme_bw()
+    )
+  }
+  return(dataset.periods.clean)
+}
+
+
+
 #' Acoustic Tag Localization: Smooth detections
 #'
 #' This will remove reflections and apply a loess smoothing to the dataset, interpolating missed points.

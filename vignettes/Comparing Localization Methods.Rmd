@@ -59,6 +59,7 @@ c <- 1500
 ## Add some error to c
 c.real <- rnorm(n = 1, mean = 1500,sd = 1)
 
+
 ## Get track time-or-arrival values for first fish
 fish.ids <- unique(Pen_SeaBass[[1]]$Period)
 xyz.true <- subset(Pen_SeaBass[[1]], Period == fish.ids[1])[1:150,c(3:5,1)]
@@ -74,7 +75,7 @@ toa.expected <- xyz2toa(hydrophone.positions = hydro.pos,
 
 ## Simulate soruces of error
 hydrophoneMovement.sd <- 0.01
-pingDetection <- 0.95
+pingDetection <- 0.85
 ggplot(data = data.frame(ms = rnorm(n = 10000,
                                     mean = 0,
                                     sd = hydrophoneMovement.sd)*100)) + 
@@ -88,10 +89,14 @@ toa.real <- toaSimError(toa = toa.expected, reciever.fs = 12000,
 
 # Plot differences between expected and real toa
 ggplot(data = as.data.frame(rbind(
-  data.frame(Hydrophone = factor(1), ms = 1000*matrix(toa.real[,1] - toa.expected[,1], ncol = 1)),
-  data.frame(Hydrophone = factor(2), ms = 1000*matrix(toa.real[,2] - toa.expected[,2], ncol = 1)),
-  data.frame(Hydrophone = factor(3), ms = 1000*matrix(toa.real[,3] - toa.expected[,3], ncol = 1)),
-  data.frame(Hydrophone = factor(4), ms = 1000*matrix(toa.real[,4] - toa.expected[,4], ncol = 1))))) +
+  data.frame(Hydrophone = factor(1),
+             ms = 1000*matrix(toa.real[,1] - toa.expected[,1], ncol = 1)),
+  data.frame(Hydrophone = factor(2),
+             ms = 1000*matrix(toa.real[,2] - toa.expected[,2], ncol = 1)),
+  data.frame(Hydrophone = factor(3),
+             ms = 1000*matrix(toa.real[,3] - toa.expected[,3], ncol = 1)),
+  data.frame(Hydrophone = factor(4),
+             ms = 1000*matrix(toa.real[,4] - toa.expected[,4], ncol = 1))))) +
   geom_histogram(aes(x = ms), bins = 40) + 
   facet_wrap(facets = ~ Hydrophone, ncol = 2) +
   ggtitle('Simulated Latency Error per Detection') +
