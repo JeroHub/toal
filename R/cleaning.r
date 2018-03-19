@@ -172,7 +172,7 @@ TagFreq.label <- function(data, plot = F, sensitivity = NA){
     # Convert to normalized circular domain
     ########################################
     ## Calc pulse period
-    dt <- 1/tag.freqs[j]
+    dt <- 1/j
     ## Calculate raw periods
     period <- (temp$seconds / dt)
     ## Convert seconds to radians (relative to pulse period)
