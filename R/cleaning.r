@@ -253,7 +253,6 @@ TagFreq.clean <- function(detections, z = 1.96, plot = T){
       # Repeat until all points are within range
       data.sub.3 <- data.sub.2
       loop <- T
-      z <- 1.96
       while(loop == T){
         v <- c(diff(data.sub.3$rads), 0) -
           c(0, diff(data.sub.3$rads))
